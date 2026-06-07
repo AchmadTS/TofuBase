@@ -268,7 +268,7 @@ public class Dashboard extends JFrame {
         return panel;
     }
 
-    // --- 2. MAIN CONTENT & SCROLL PANE ---
+// --- MAIN CONTENT & SCROLL PANE ---
     private JPanel createMainContent() {
         JPanel mainContent = new JPanel(new BorderLayout());
         mainContent.setBackground(COLOR_BG);
@@ -305,7 +305,7 @@ public class Dashboard extends JFrame {
         dashboardContainer.setBackground(COLOR_BG);
         dashboardContainer.setBorder(new EmptyBorder(10, 30, 30, 30));
 
-        // BAGIAN 1: KARTU ATAS
+        // KARTU ATAS
         JPanel topCardsPanel = new JPanel(new GridLayout(1, 4, 20, 0));
         topCardsPanel.setBackground(COLOR_BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
@@ -314,41 +314,111 @@ public class Dashboard extends JFrame {
         topCardsPanel.add(createStatCard("PENDAPATAN", "Rp 4,2", "Jt", "▲ 8% dari bulan lalu", COLOR_GREEN));
         topCardsPanel.add(createStatCard("TAHU SIAP JUAL", "180", "potong", "Update 2 jam lalu", COLOR_TEXT_SECONDARY));
 
-        // BAGIAN 2: GRAFIK & STATUS STOK
-        // PERBAIKAN: Mengunci dimensi minimum agar tidak gepeng/squished
+        // GRAFIK & STATUS STOK
         JPanel middlePanel = new JPanel(new BorderLayout(20, 0));
         middlePanel.setBackground(COLOR_BG);
         middlePanel.setMinimumSize(new Dimension(800, 260));
         middlePanel.setPreferredSize(new Dimension(800, 260));
         middlePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
 
-        // Grafik
+        // --- Grafik dengan Dropdown Filter ---
         RoundedPanel chartPanel = new RoundedPanel(20, COLOR_CARD);
-        chartPanel.setLayout(new BorderLayout());
+        chartPanel.setLayout(new BorderLayout(0, 15));
         chartPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
+
+        // Header Grafik
+        JPanel chartHeader = new JPanel(new BorderLayout());
+        chartHeader.setOpaque(false);
+
         JLabel chartTitle = new JLabel("Produksi 7 Hari Terakhir");
         chartTitle.setForeground(COLOR_TEXT_PRIMARY);
         chartTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
-        chartPanel.add(chartTitle, BorderLayout.NORTH);
+        chartHeader.add(chartTitle, BorderLayout.WEST);
 
+        // Dropdown Timeframe
+        String[] timeframes = {"1D", "1W", "1M", "3M", "1Y", "5Y", "ALL"};
+        JComboBox<String> cbTimeframe = new JComboBox<>(timeframes);
+        cbTimeframe.setSelectedItem("1W"); // Default
+        cbTimeframe.setBackground(COLOR_BG);
+        cbTimeframe.setForeground(COLOR_TEXT_PRIMARY);
+        cbTimeframe.setFocusable(false);
+        chartHeader.add(cbTimeframe, BorderLayout.EAST);
+
+        chartPanel.add(chartHeader, BorderLayout.NORTH);
+
+        final int[][] currentChartData = {{60, 80, 50, 90, 70, 85, 120}};
         JPanel mockChart = new JPanel() {
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(COLOR_BLUE_ACCENT);
-                int[] heights = {60, 80, 50, 90, 70, 85, 120};
-                int width = 40;
-                int space = 20;
-                for (int i = 0; i < heights.length; i++) {
-                    g2.fillRect(30 + (i * (width + space)), getHeight() - heights[i] - 20, width, heights[i]);
+
+                int[] heights = currentChartData[0];
+                int n = heights.length;
+                if (n == 0) {
+                    return;
+                }
+                
+                int maxPanelWidth = getWidth() - 40;
+                int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
+                int width = (maxPanelWidth - (space * (n - 1))) / n;
+
+                if (width < 2) {
+                    width = 2;
+                }
+                if (width > 40) {
+                    width = 40;
+                }
+                int totalContentWidth = (width * n) + (space * (n - 1));
+                int startX = 20 + (maxPanelWidth - totalContentWidth) / 2;
+
+                for (int i = 0; i < n; i++) {
+                    g2.fillRect(startX + (i * (width + space)), getHeight() - heights[i] - 10, width, heights[i]);
                 }
             }
         };
         mockChart.setBackground(COLOR_CARD);
         chartPanel.add(mockChart, BorderLayout.CENTER);
 
-        // Status Stok
+        // Dropdown: Mengubah Teks & Data, lalu me-Refresh Grafik
+        cbTimeframe.addActionListener(e -> {
+            String selected = (String) cbTimeframe.getSelectedItem();
+            switch (selected) {
+                case "1D":
+                    chartTitle.setText("Produksi 1 Hari Terakhir");
+                    currentChartData[0] = new int[]{70, 90, 110, 80, 130, 140, 120, 150};
+                    break;
+                case "1W":
+                    chartTitle.setText("Produksi 7 Hari Terakhir");
+                    currentChartData[0] = new int[]{60, 80, 50, 90, 70, 85, 120};
+                    break;
+                case "1M":
+                    chartTitle.setText("Produksi 1 Bulan Terakhir");
+                    currentChartData[0] = new int[]{40, 55, 45, 60, 75, 80, 95, 110, 90, 130, 120, 140, 135};
+                    break;
+                case "3M":
+                    chartTitle.setText("Produksi 3 Bulan Terakhir");
+                    currentChartData[0] = new int[]{30, 45, 60, 50, 70, 85, 75, 90, 110, 100, 120, 140};
+                    break;
+                case "1Y":
+                    chartTitle.setText("Produksi 1 Tahun Terakhir");
+                    currentChartData[0] = new int[]{40, 50, 65, 80, 95, 110, 105, 90, 120, 130, 145, 150};
+                    break;
+                case "5Y":
+                    chartTitle.setText("Produksi 5 Tahun Terakhir");
+                    currentChartData[0] = new int[]{60, 90, 110, 130, 150};
+                    break;
+                case "ALL":
+                    chartTitle.setText("Total Produksi Keseluruhan");
+                    currentChartData[0] = new int[]{30, 50, 40, 70, 60, 90, 85, 110, 130, 120, 140, 150};
+                    break;
+            }
+            mockChart.repaint();
+        });
+
+        // --- Status Stok ---
         RoundedPanel statusPanel = new RoundedPanel(20, COLOR_CARD);
         statusPanel.setPreferredSize(new Dimension(320, 0));
         statusPanel.setLayout(new BorderLayout());
@@ -379,8 +449,6 @@ public class Dashboard extends JFrame {
         statusScroll.getViewport().setOpaque(false);
         statusScroll.setBorder(null);
         statusScroll.getVerticalScrollBar().setUnitIncrement(16);
-
-        // PERBAIKAN: Mengaplikasikan UI Scrollbar Modern Tipis
         statusScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
 
         statusPanel.add(statusScroll, BorderLayout.CENTER);
@@ -388,7 +456,7 @@ public class Dashboard extends JFrame {
         middlePanel.add(chartPanel, BorderLayout.CENTER);
         middlePanel.add(statusPanel, BorderLayout.EAST);
 
-        // BAGIAN 3: TABEL AKTIVITAS
+        // TABEL AKTIVITAS
         JPanel bottomPanel = createActivityTable();
 
         dashboardContainer.add(topCardsPanel);
@@ -397,7 +465,6 @@ public class Dashboard extends JFrame {
         dashboardContainer.add(Box.createVerticalStrut(20));
         dashboardContainer.add(bottomPanel);
 
-        // PERBAIKAN: Scroll utama
         JScrollPane scrollPane = new JScrollPane(dashboardContainer);
         scrollPane.setBorder(null);
         scrollPane.getVerticalScrollBar().setUnitIncrement(16);
