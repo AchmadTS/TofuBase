@@ -1,6 +1,6 @@
-package com.tubes.tofubase.App;
+package App;
 
-import com.tubes.tofubase.Dashboard.Dashboard;
+import views.Dashboard;
 import javax.swing.SwingUtilities;
 
 public class TofuBaseApp {
