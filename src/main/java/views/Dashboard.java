@@ -11,6 +11,9 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import utils.Theme;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 
 public class Dashboard extends JFrame {
 
@@ -40,7 +43,11 @@ public class Dashboard extends JFrame {
         JLabel headerTitle = new JLabel("Dashboard");
         headerTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
         headerTitle.setForeground(Theme.TEXT_PRIMARY);
-        JLabel headerDate = new JLabel("Minggu, 15 Maret 2026");
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", new Locale("id", "ID"));
+        JLabel headerDate = new JLabel(LocalDate.now().format(formatter));
+        headerDate.setFont(new Font("SansSerif", Font.PLAIN, 14));
+        headerDate.setForeground(Theme.TEXT_SECONDARY);
+        new javax.swing.Timer(60_000, e -> headerDate.setText(LocalDate.now().format(formatter))).start();
         headerDate.setFont(new Font("SansSerif", Font.PLAIN, 14));
         headerDate.setForeground(Theme.TEXT_SECONDARY);
         titlePanel.add(headerTitle);
@@ -196,7 +203,7 @@ public class Dashboard extends JFrame {
 
                     FontMetrics fm = g2.getFontMetrics();
                     int textWidth = fm.stringWidth(valueText);
-                    
+
                     g2.setColor(new Color(20, 20, 20, 220));
                     int tooltipX = barX + (width / 2) - (textWidth / 2) - 8;
                     int tooltipY = barY - 30;
