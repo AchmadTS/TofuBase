@@ -18,7 +18,7 @@ public class Sidebar extends JPanel {
         title.setForeground(Theme.TEXT_PRIMARY);
         title.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JLabel subtitle = new JLabel("Pabrik Tahu Sejahtera");
+        JLabel subtitle = new JLabel("Pabrik Tahu");
         subtitle.setFont(new Font("SansSerif", Font.PLAIN, 12));
         subtitle.setForeground(Theme.TEXT_SECONDARY);
         subtitle.setAlignmentX(Component.LEFT_ALIGNMENT);

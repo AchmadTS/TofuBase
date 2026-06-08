@@ -16,13 +16,15 @@ import java.sql.Statement;
 import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import utils.Theme;
 
 public class Dashboard extends JFrame {
 
     public Dashboard() {
-        setTitle("TofuBase - Pabrik Tahu Sejahtera");
+        setTitle("TofuBase - Pabrik Tahu");
         setSize(1200, 800);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
@@ -116,9 +118,9 @@ public class Dashboard extends JFrame {
         // GRAFIK & STATUS STOK
         JPanel middlePanel = new JPanel(new BorderLayout(20, 0));
         middlePanel.setBackground(Theme.BG);
-        middlePanel.setMinimumSize(new Dimension(800, 260));
-        middlePanel.setPreferredSize(new Dimension(800, 260));
-        middlePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
+        middlePanel.setMinimumSize(new Dimension(800, 300));
+        middlePanel.setPreferredSize(new Dimension(800, 300));
+        middlePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
 
         // --- Grafik Panel ---
         RoundedPanel chartPanel = new RoundedPanel(20, Theme.CARD);
@@ -132,31 +134,54 @@ public class Dashboard extends JFrame {
         chartTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
         chartHeader.add(chartTitle, BorderLayout.WEST);
 
-        JComboBox<String> cbTimeframe = new JComboBox<>(new String[]{"1W (Dinamis)", "1M (Statis)", "3M (Statis)", "ALL"});
+        JComboBox<String> cbTimeframe = new JComboBox<>(new String[]{"1W", "1M", "3M", "ALL"});
         cbTimeframe.setBackground(Theme.BG);
         cbTimeframe.setForeground(Theme.TEXT_PRIMARY);
         cbTimeframe.setCursor(new Cursor(Cursor.HAND_CURSOR));
         chartHeader.add(cbTimeframe, BorderLayout.EAST);
         chartPanel.add(chartHeader, BorderLayout.NORTH);
 
-        // --- AMBIL DATA GRAFIK DARI DATABASE (7 HARI TERAKHIR) ---
-        int[] dynamicChartData = new int[]{0, 0, 0, 0, 0, 0, 0};
-        try {
-            Connection conn = utils.DatabaseConfig.getKoneksi();
-            Statement stmt = conn.createStatement();
-            ResultSet rsChart = stmt.executeQuery("SELECT SUM(hasil_tahu) as total FROM produksi GROUP BY tanggal ORDER BY tanggal DESC LIMIT 7");
+        // --- DATA GRAFIK DINAMIS ---
+        final List<String> chartLabels = new ArrayList<>();
+        final List<Integer> chartValues = new ArrayList<>();
 
-            int idx = 6;
-            while (rsChart.next() && idx >= 0) {
-                dynamicChartData[idx] = rsChart.getInt("total");
-                idx--;
+        Runnable fetchChartData = () -> {
+            chartLabels.clear();
+            chartValues.clear();
+            String selected = (String) cbTimeframe.getSelectedItem();
+            String query = "";
+
+            if ("1W".equals(selected)) {
+                chartTitle.setText("Produksi 7 Hari Terakhir");
+                query = "SELECT DATE_FORMAT(tanggal, '%d %b') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY tanggal ORDER BY tanggal ASC";
+            } else if ("1M".equals(selected)) {
+                chartTitle.setText("Produksi 30 Hari Terakhir");
+                query = "SELECT DATE_FORMAT(tanggal, '%d %b') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) GROUP BY tanggal ORDER BY tanggal ASC";
+            } else if ("3M".equals(selected)) {
+                chartTitle.setText("Produksi 3 Bulan Terakhir");
+                query = "SELECT DATE_FORMAT(tanggal, '%b %Y') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) GROUP BY YEAR(tanggal), MONTH(tanggal) ORDER BY YEAR(tanggal), MONTH(tanggal) ASC";
+            } else {
+                chartTitle.setText("Total Produksi Keseluruhan");
+                query = "SELECT DATE_FORMAT(tanggal, '%b %Y') as label, SUM(hasil_tahu) as total FROM produksi GROUP BY YEAR(tanggal), MONTH(tanggal) ORDER BY YEAR(tanggal), MONTH(tanggal) ASC";
             }
-        } catch (Exception e) {
-            System.err.println("Gagal memuat data grafik: " + e.getMessage());
-        }
 
-        final int[][] currentChartData = {dynamicChartData};
-
+            try {
+                Connection conn = utils.DatabaseConfig.getKoneksi();
+                Statement stmt = conn.createStatement();
+                ResultSet rsChart = stmt.executeQuery(query);
+                while (rsChart.next()) {
+                    chartLabels.add(rsChart.getString("label"));
+                    chartValues.add(rsChart.getInt("total"));
+                }
+            } catch (Exception e) {
+                System.err.println("Gagal memuat data grafik: " + e.getMessage());
+            }
+            if (chartValues.isEmpty()) {
+                chartLabels.add("-");
+                chartValues.add(0);
+            }
+        };
+        fetchChartData.run();
         JPanel mockChart = new JPanel() {
             private int hoveredBarIndex = -1;
 
@@ -185,22 +210,45 @@ public class Dashboard extends JFrame {
             }
 
             private int getHoveredBarIndex(int mouseX, int mouseY) {
-                int[] heights = currentChartData[0];
-                int n = heights.length;
-                if (n == 0) {
+                if (chartValues.isEmpty()) {
                     return -1;
                 }
-                int maxPanelWidth = getWidth() - 40;
+
+                int n = chartValues.size();
+                int maxVal = 1;
+                for (int h : chartValues) {
+                    if (h > maxVal) {
+                        maxVal = h;
+                    }
+                }
+                maxVal = (int) (maxVal * 1.15);
+
+                int paddingLeft = 50;
+                int paddingBottom = 30;
+                int paddingTop = 10;
+                int paddingRight = 10;
+
+                int chartWidth = getWidth() - paddingLeft - paddingRight;
+                int chartHeight = getHeight() - paddingTop - paddingBottom;
+
+                if (chartHeight <= 0 || chartWidth <= 0) {
+                    return -1;
+                }
+
+                double scale = (double) chartHeight / maxVal;
                 int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
-                int width = (maxPanelWidth - (space * (n - 1))) / n;
+                int width = (chartWidth - (space * (n - 1))) / n;
                 width = Math.max(2, Math.min(width, 40));
+
                 int totalContentWidth = (width * n) + (space * (n - 1));
-                int startX = 20 + (maxPanelWidth - totalContentWidth) / 2;
+                int startX = paddingLeft + (chartWidth - totalContentWidth) / 2;
 
                 for (int i = 0; i < n; i++) {
                     int barX = startX + (i * (width + space));
-                    int barY = getHeight() - heights[i] - 10;
-                    if (mouseX >= barX && mouseX <= barX + width && mouseY >= barY && mouseY <= barY + heights[i]) {
+                    int scaledHeight = (int) (chartValues.get(i) * scale);
+                    int barY = paddingTop + chartHeight - scaledHeight;
+
+                    if (mouseX >= barX && mouseX <= barX + width && mouseY >= barY && mouseY <= barY + scaledHeight) {
                         return i;
                     }
                 }
@@ -212,31 +260,61 @@ public class Dashboard extends JFrame {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                int[] heights = currentChartData[0];
-                int n = heights.length;
-                if (n == 0) {
+
+                if (chartValues.isEmpty()) {
                     return;
                 }
 
+                int n = chartValues.size();
                 int maxVal = 1;
-                for (int h : heights) {
+                for (int h : chartValues) {
                     if (h > maxVal) {
                         maxVal = h;
                     }
                 }
-                double scale = (double) (getHeight() - 40) / maxVal;
+                maxVal = (int) (maxVal * 1.15);
 
-                int maxPanelWidth = getWidth() - 40;
+                int paddingLeft = 50;
+                int paddingBottom = 30;
+                int paddingTop = 10;
+                int paddingRight = 10;
+                int chartWidth = getWidth() - paddingLeft - paddingRight;
+                int chartHeight = getHeight() - paddingTop - paddingBottom;
+
+                if (chartHeight <= 0 || chartWidth <= 0) {
+                    return;
+                }
+
+                double scale = (double) chartHeight / maxVal;
+                int numGridLines = 4;
+                g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
+                for (int i = 0; i <= numGridLines; i++) {
+                    int y = paddingTop + chartHeight - (i * chartHeight / numGridLines);
+                    int value = maxVal * i / numGridLines;
+                    g2.setColor(new Color(Theme.BORDER.getRed(), Theme.BORDER.getGreen(), Theme.BORDER.getBlue(), 120));
+                    g2.drawLine(paddingLeft, y, paddingLeft + chartWidth, y);
+                    g2.setColor(Theme.TEXT_SECONDARY);
+                    String yLabel = String.valueOf(value);
+                    FontMetrics fm = g2.getFontMetrics();
+                    g2.drawString(yLabel, paddingLeft - fm.stringWidth(yLabel) - 10, y + (fm.getAscent() / 2) - 2);
+                }
+
                 int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
-                int width = (maxPanelWidth - (space * (n - 1))) / n;
+                int width = (chartWidth - (space * (n - 1))) / n;
                 width = Math.max(2, Math.min(width, 40));
                 int totalContentWidth = (width * n) + (space * (n - 1));
-                int startX = 20 + (maxPanelWidth - totalContentWidth) / 2;
-
+                int startX = paddingLeft + (chartWidth - totalContentWidth) / 2;
                 for (int i = 0; i < n; i++) {
                     int barX = startX + (i * (width + space));
-                    int scaledHeight = (int) (heights[i] * scale);
-                    int barY = getHeight() - scaledHeight - 10;
+                    int scaledHeight = (int) (chartValues.get(i) * scale);
+                    int barY = paddingTop + chartHeight - scaledHeight;
+                    if (n <= 15 || i % 3 == 0 || i == n - 1) {
+                        g2.setColor(Theme.TEXT_SECONDARY);
+                        String xLabel = chartLabels.get(i);
+                        FontMetrics fm = g2.getFontMetrics();
+                        int labelX = barX + (width / 2) - (fm.stringWidth(xLabel) / 2);
+                        g2.drawString(xLabel, labelX, paddingTop + chartHeight + 20);
+                    }
 
                     if (i == hoveredBarIndex) {
                         g2.setColor(Theme.BLUE_ACCENT.brighter());
@@ -248,35 +326,33 @@ public class Dashboard extends JFrame {
 
                 if (hoveredBarIndex != -1) {
                     int barX = startX + (hoveredBarIndex * (width + space));
-                    int scaledHeight = (int) (heights[hoveredBarIndex] * scale);
-                    int barY = getHeight() - scaledHeight - 10;
-                    String valueText = String.valueOf(heights[hoveredBarIndex]);
-
+                    int scaledHeight = (int) (chartValues.get(hoveredBarIndex) * scale);
+                    int barY = paddingTop + chartHeight - scaledHeight;
+                    String valueText = chartValues.get(hoveredBarIndex) + " potong";
+                    String dateText = chartLabels.get(hoveredBarIndex);
                     FontMetrics fm = g2.getFontMetrics();
-                    int textWidth = fm.stringWidth(valueText);
-
+                    int textWidth = Math.max(fm.stringWidth(valueText), fm.stringWidth(dateText));
                     g2.setColor(new Color(20, 20, 20, 220));
                     int tooltipX = barX + (width / 2) - (textWidth / 2) - 8;
-                    int tooltipY = barY - 30;
-                    g2.fillRoundRect(tooltipX, tooltipY, textWidth + 16, 24, 8, 8);
-
+                    int tooltipY = barY - 45;
+                    
+                    if (tooltipY < 0) {
+                        tooltipY = 0;
+                    }
+                    
+                    g2.fillRoundRect(tooltipX, tooltipY, textWidth + 16, 38, 8, 8);
                     g2.setColor(Color.WHITE);
                     g2.drawString(valueText, tooltipX + 8, tooltipY + 16);
+                    g2.setColor(Theme.TEXT_SECONDARY);
+                    g2.drawString(dateText, tooltipX + 8, tooltipY + 30);
                 }
             }
         };
         mockChart.setBackground(Theme.CARD);
         chartPanel.add(mockChart, BorderLayout.CENTER);
-
         cbTimeframe.addActionListener(e -> {
-            String selected = (String) cbTimeframe.getSelectedItem();
-            if (selected.contains("1W")) {
-                chartTitle.setText("Produksi 7 Hari Terakhir");
-                currentChartData[0] = dynamicChartData;
-            } else {
-                chartTitle.setText("Data Dummy Tampilan Statis");
-                currentChartData[0] = new int[]{100, 150, 120, 180, 200, 170, 220, 190, 250};
-            }
+            mockChart.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+            fetchChartData.run();
             mockChart.repaint();
         });
 
