@@ -1,0 +1,1 @@
+INSERT INTO `admin` (`id_admin`, `id_user`, `jabatan`, `level_akses`, `tanggal_dibuat`) VALUES (1, 4, 'Administrator', 'admin', '2024-01-01 08:00:00');
