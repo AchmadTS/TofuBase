@@ -2,7 +2,6 @@ package components;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-
 import java.awt.*;
 import utils.Theme;
 
@@ -40,6 +39,7 @@ public class Sidebar extends JPanel {
         activeMenu.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         activeMenu.setBorder(new EmptyBorder(0, 15, 0, 15));
         activeMenu.setAlignmentX(Component.LEFT_ALIGNMENT);
+        activeMenu.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         JLabel dashboardIcon = new JLabel("⊞", SwingConstants.CENTER);
         dashboardIcon.setFont(new Font("SansSerif", Font.BOLD, 18));
@@ -80,6 +80,7 @@ public class Sidebar extends JPanel {
         userPanel.setOpaque(false);
         userPanel.setAlignmentX(Component.LEFT_ALIGNMENT);
         userPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        userPanel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         RoundedPanel avatar = new RoundedPanel(36, new Color(150, 200, 255));
         avatar.setPreferredSize(new Dimension(36, 36));
@@ -94,7 +95,7 @@ public class Sidebar extends JPanel {
 
         JPanel userInfo = new JPanel(new GridLayout(2, 1));
         userInfo.setOpaque(false);
-        JLabel userName = new JLabel("Pak Budi");
+        JLabel userName = new JLabel("Achmad Tirto Sudiro");
         userName.setForeground(Theme.TEXT_PRIMARY);
         userName.setFont(new Font("SansSerif", Font.BOLD, 14));
         JLabel userRole = new JLabel("Owner");
@@ -116,6 +117,7 @@ public class Sidebar extends JPanel {
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
         panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
         panel.setBorder(new EmptyBorder(0, 15, 0, 15));
+        panel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         JLabel lblIcon = new JLabel(icon, SwingConstants.CENTER);
         lblIcon.setForeground(Theme.TEXT_SECONDARY);

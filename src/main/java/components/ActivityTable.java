@@ -71,6 +71,7 @@ public class ActivityTable extends RoundedPanel {
         cbEntries = new JComboBox<>(new String[]{"5", "10", "25", "50"});
         cbEntries.setBackground(Theme.BG);
         cbEntries.setForeground(Theme.TEXT_PRIMARY);
+        cbEntries.setCursor(new Cursor(Cursor.HAND_CURSOR));
         cbEntries.addActionListener(e -> {
             entriesPerPage = Integer.parseInt((String) cbEntries.getSelectedItem());
             currentPage = 1;
@@ -127,7 +128,7 @@ public class ActivityTable extends RoundedPanel {
         topHeader.add(controlRow, BorderLayout.CENTER);
         add(topHeader, BorderLayout.NORTH);
 
-        // --- Tabel dengan Internal Scroll ---
+        // --- Tabel & Internal Scroll ---
         tableContentPanel = new JPanel();
         tableContentPanel.setLayout(new BoxLayout(tableContentPanel, BoxLayout.Y_AXIS));
         tableContentPanel.setOpaque(false);
@@ -187,6 +188,7 @@ public class ActivityTable extends RoundedPanel {
         btnPrev.setBackground(Theme.BG);
         btnPrev.setForeground(Theme.TEXT_PRIMARY);
         btnPrev.setFocusPainted(false);
+        btnPrev.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnPrev.addActionListener(e -> {
             currentPage--;
             updateTableModel();
@@ -196,11 +198,13 @@ public class ActivityTable extends RoundedPanel {
         btnPageNum.setBackground(Theme.BLUE_ACCENT);
         btnPageNum.setForeground(Color.WHITE);
         btnPageNum.setFocusPainted(false);
+        btnPageNum.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         btnNext = new JButton("Selanjutnya");
         btnNext.setBackground(Theme.BG);
         btnNext.setForeground(Theme.TEXT_PRIMARY);
         btnNext.setFocusPainted(false);
+        btnNext.setCursor(new Cursor(Cursor.HAND_CURSOR));
         btnNext.addActionListener(e -> {
             currentPage++;
             updateTableModel();

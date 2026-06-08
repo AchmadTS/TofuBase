@@ -7,6 +7,9 @@ import components.Sidebar;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import utils.Theme;
 
 public class Dashboard extends JFrame {
@@ -91,36 +94,116 @@ public class Dashboard extends JFrame {
         cbTimeframe.setSelectedItem("1W");
         cbTimeframe.setBackground(Theme.BG);
         cbTimeframe.setForeground(Theme.TEXT_PRIMARY);
+        cbTimeframe.setCursor(new Cursor(Cursor.HAND_CURSOR));
         chartHeader.add(cbTimeframe, BorderLayout.EAST);
         chartPanel.add(chartHeader, BorderLayout.NORTH);
 
         final int[][] currentChartData = {{60, 80, 50, 90, 70, 85, 120}};
 
+        // --- MOCK CHART & FITUR HOVER ---
         JPanel mockChart = new JPanel() {
+            private int hoveredBarIndex = -1;
+
+            {
+                addMouseMotionListener(new MouseMotionAdapter() {
+                    @Override
+                    public void mouseMoved(MouseEvent e) {
+                        int index = getHoveredBarIndex(e.getX(), e.getY());
+                        if (index != hoveredBarIndex) {
+                            hoveredBarIndex = index;
+                            setCursor(new Cursor(hoveredBarIndex != -1 ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+                            repaint();
+                        }
+                    }
+                });
+                addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        if (hoveredBarIndex != -1) {
+                            hoveredBarIndex = -1;
+                            setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+                            repaint();
+                        }
+                    }
+                });
+            }
+
+            // Fungsi untuk deteksi apakah kursor ada di atas bar
+            private int getHoveredBarIndex(int mouseX, int mouseY) {
+                int[] heights = currentChartData[0];
+                int n = heights.length;
+                if (n == 0) {
+                    return -1;
+                }
+
+                int maxPanelWidth = getWidth() - 40;
+                int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
+                int width = (maxPanelWidth - (space * (n - 1))) / n;
+                width = Math.max(2, Math.min(width, 40));
+
+                int totalContentWidth = (width * n) + (space * (n - 1));
+                int startX = 20 + (maxPanelWidth - totalContentWidth) / 2;
+
+                for (int i = 0; i < n; i++) {
+                    int barX = startX + (i * (width + space));
+                    int barY = getHeight() - heights[i] - 10;
+                    if (mouseX >= barX && mouseX <= barX + width && mouseY >= barY && mouseY <= barY + heights[i]) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
             @Override
             protected void paintComponent(Graphics g) {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(Theme.BLUE_ACCENT);
+
                 int[] heights = currentChartData[0];
                 int n = heights.length;
                 if (n == 0) {
                     return;
                 }
+
                 int maxPanelWidth = getWidth() - 40;
                 int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
                 int width = (maxPanelWidth - (space * (n - 1))) / n;
-                if (width < 2) {
-                    width = 2;
-                }
-                if (width > 40) {
-                    width = 40;
-                }
+                width = Math.max(2, Math.min(width, 40));
+
                 int totalContentWidth = (width * n) + (space * (n - 1));
                 int startX = 20 + (maxPanelWidth - totalContentWidth) / 2;
+
+                // Gambar semua bar
                 for (int i = 0; i < n; i++) {
-                    g2.fillRect(startX + (i * (width + space)), getHeight() - heights[i] - 10, width, heights[i]);
+                    int barX = startX + (i * (width + space));
+                    int barY = getHeight() - heights[i] - 10;
+
+                    // Efek highlight (warna lebih cerah) saat bar disentuh
+                    if (i == hoveredBarIndex) {
+                        g2.setColor(Theme.BLUE_ACCENT.brighter());
+                    } else {
+                        g2.setColor(Theme.BLUE_ACCENT);
+                    }
+                    g2.fillRect(barX, barY, width, heights[i]);
+                }
+
+                // Gambar tooltip angka DI ATAS semua bar
+                if (hoveredBarIndex != -1) {
+                    int barX = startX + (hoveredBarIndex * (width + space));
+                    int barY = getHeight() - heights[hoveredBarIndex] - 10;
+                    String valueText = String.valueOf(heights[hoveredBarIndex]);
+
+                    FontMetrics fm = g2.getFontMetrics();
+                    int textWidth = fm.stringWidth(valueText);
+                    
+                    g2.setColor(new Color(20, 20, 20, 220));
+                    int tooltipX = barX + (width / 2) - (textWidth / 2) - 8;
+                    int tooltipY = barY - 30;
+                    g2.fillRoundRect(tooltipX, tooltipY, textWidth + 16, 24, 8, 8);
+
+                    g2.setColor(Color.WHITE);
+                    g2.drawString(valueText, tooltipX + 8, tooltipY + 16);
                 }
             }
         };
@@ -199,7 +282,7 @@ public class Dashboard extends JFrame {
         middlePanel.add(chartPanel, BorderLayout.CENTER);
         middlePanel.add(statusPanel, BorderLayout.EAST);
 
-        // Memanggil Class ActivityTable
+        // Panggil Class ActivityTable
         ActivityTable bottomPanel = new ActivityTable();
 
         dashboardContainer.add(topCardsPanel);
