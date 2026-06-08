@@ -8,6 +8,11 @@ import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 import utils.Theme;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
 
 public class ActivityTable extends RoundedPanel {
 
@@ -31,23 +36,68 @@ public class ActivityTable extends RoundedPanel {
 
         setPreferredSize(new Dimension(0, 390));
         setMaximumSize(new Dimension(Integer.MAX_VALUE, 390));
+        loadDataDariDatabase();
 
-        generateDummyData();
         buildUI();
         updateTableModel();
     }
 
-    private void generateDummyData() {
-        for (int i = 1; i <= 24; i++) {
-            String date = (10 + (i % 15)) + " Mar 2026";
-            String batch = String.format("#B-%03d", 40 + i);
-            String kedelai = (20 + (i % 10)) + " kg";
-            String hasil = (180 + (i % 50)) + " potong";
-            String operator = (i % 3 == 0) ? "Bu Wati" : "Pak Slamet";
-            String status = (i == 1) ? "Proses" : "Selesai";
-            allActivityData.add(new String[]{date, batch, kedelai, hasil, operator, status});
+    private void loadDataDariDatabase() {
+        allActivityData.clear();
+
+        try {
+            Connection conn = utils.DatabaseConfig.getKoneksi();
+            Statement stmt = conn.createStatement();
+            String query = "SELECT "
+                    + "  p.tanggal, "
+                    + "  p.batch, "
+                    + "  p.hasil_tahu, "
+                    + "  p.status, "
+                    + "  u.nama AS nama_operator, "
+                    + "  rp.jumlah AS jumlah_kedelai, "
+                    + "  rp.satuan AS satuan_kedelai "
+                    + "FROM produksi p "
+                    + "JOIN users u ON p.id_user = u.id_user "
+                    + "LEFT JOIN record_produksi rp ON p.id_produksi = rp.id_produksi AND rp.id_bahan = 1 "
+                    + "ORDER BY p.tanggal DESC, p.id_produksi DESC";
+
+            ResultSet rs = stmt.executeQuery(query);
+            SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy");
+
+            while (rs.next()) {
+                Date dbDate = rs.getDate("tanggal");
+                String date = (dbDate != null) ? sdf.format(dbDate) : "-";
+                String batch = rs.getString("batch");
+                String hasil = rs.getInt("hasil_tahu") + " potong";
+                String kedelai = "-";
+                if (rs.getString("jumlah_kedelai") != null) {
+                    double jumlah = rs.getDouble("jumlah_kedelai");
+                    String satuan = rs.getString("satuan_kedelai");
+                    if (jumlah == (long) jumlah) {
+                        kedelai = String.format("%d %s", (long) jumlah, satuan);
+                    } else {
+                        kedelai = String.format("%s %s", jumlah, satuan);
+                    }
+                }
+
+                String operator = rs.getString("nama_operator");
+                if (operator != null && operator.contains(" ")) {
+                    operator = operator.split(" ")[0];
+                }
+                String status = rs.getString("status");
+                allActivityData.add(new String[]{date, batch, kedelai, hasil, operator, status});
+            }
+
+        } catch (Exception e) {
+            System.err.println("Gagal menarik data dari database: " + e.getMessage());
+            e.printStackTrace();
         }
-        filteredData.addAll(allActivityData);
+
+        if (allActivityData.isEmpty()) {
+            System.out.println("Tidak ada aktivitas produksi terbaru...");
+        } else {
+            filteredData.addAll(allActivityData);
+        }
     }
 
     private void buildUI() {

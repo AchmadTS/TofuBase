@@ -10,10 +10,14 @@ import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import utils.Theme;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import utils.Theme;
 
 public class Dashboard extends JFrame {
 
@@ -48,8 +52,6 @@ public class Dashboard extends JFrame {
         headerDate.setFont(new Font("SansSerif", Font.PLAIN, 14));
         headerDate.setForeground(Theme.TEXT_SECONDARY);
         new javax.swing.Timer(60_000, e -> headerDate.setText(LocalDate.now().format(formatter))).start();
-        headerDate.setFont(new Font("SansSerif", Font.PLAIN, 14));
-        headerDate.setForeground(Theme.TEXT_SECONDARY);
         titlePanel.add(headerTitle);
         titlePanel.add(headerDate);
 
@@ -69,14 +71,47 @@ public class Dashboard extends JFrame {
         dashboardContainer.setBackground(Theme.BG);
         dashboardContainer.setBorder(new EmptyBorder(10, 30, 30, 30));
 
-        // KARTU ATAS
+        String prodHariIni = "0", stokKedelai = "0", pendapatan = "0", tahuSiapJual = "0";
+        try {
+            Connection conn = utils.DatabaseConfig.getKoneksi();
+            Statement stmt = conn.createStatement();
+
+            // Produksi Hari Ini
+            ResultSet rsProd = stmt.executeQuery("SELECT SUM(hasil_tahu) AS total FROM produksi WHERE tanggal = CURDATE()");
+            if (rsProd.next() && rsProd.getString("total") != null) {
+                prodHariIni = rsProd.getString("total");
+            }
+
+            // Stok Kedelai
+            ResultSet rsKed = stmt.executeQuery("SELECT stok FROM bahan_baku WHERE nama LIKE '%Kedelai%' LIMIT 1");
+            if (rsKed.next()) {
+                stokKedelai = String.valueOf(rsKed.getInt("stok"));
+            }
+
+            // Pendapatan (Total Penjualan Bulan Ini)
+            ResultSet rsPend = stmt.executeQuery("SELECT SUM(total) AS total FROM penjualan WHERE MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE())");
+            if (rsPend.next() && rsPend.getString("total") != null) {
+                double totalRp = rsPend.getDouble("total");
+                pendapatan = String.format("%.1f", totalRp / 1000000.0);
+            }
+
+            // Tahu Siap Jual
+            ResultSet rsTahu = stmt.executeQuery("SELECT SUM(stok) AS total FROM produk");
+            if (rsTahu.next() && rsTahu.getString("total") != null) {
+                tahuSiapJual = rsTahu.getString("total");
+            }
+
+        } catch (Exception e) {
+            System.err.println("Gagal memuat Top Cards: " + e.getMessage());
+        }
+
         JPanel topCardsPanel = new JPanel(new GridLayout(1, 4, 20, 0));
         topCardsPanel.setBackground(Theme.BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
-        topCardsPanel.add(createStatCard("PRODUKSI HARI INI", "240", "potong", "▲ 12% dari kemarin", Theme.GREEN));
-        topCardsPanel.add(createStatCard("STOK KEDELAI", "85", "kg", "▼ Perlu restok", Theme.RED));
-        topCardsPanel.add(createStatCard("PENDAPATAN", "Rp 4,2", "Jt", "▲ 8% dari bulan lalu", Theme.GREEN));
-        topCardsPanel.add(createStatCard("TAHU SIAP JUAL", "180", "potong", "Update 2 jam lalu", Theme.TEXT_SECONDARY));
+        topCardsPanel.add(createStatCard("PRODUKSI HARI INI", prodHariIni, "potong", "Terbaru hari ini", Theme.GREEN));
+        topCardsPanel.add(createStatCard("STOK KEDELAI", stokKedelai, "kg", "Sesuai gudang", Theme.WARNING));
+        topCardsPanel.add(createStatCard("PENDAPATAN", "Rp " + pendapatan, "jt", "Bulan ini", Theme.GREEN));
+        topCardsPanel.add(createStatCard("TAHU SIAP JUAL", tahuSiapJual, "potong", "Total semua jenis", Theme.TEXT_SECONDARY));
 
         // GRAFIK & STATUS STOK
         JPanel middlePanel = new JPanel(new BorderLayout(20, 0));
@@ -85,7 +120,7 @@ public class Dashboard extends JFrame {
         middlePanel.setPreferredSize(new Dimension(800, 260));
         middlePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 260));
 
-        // --- Grafik ---
+        // --- Grafik Panel ---
         RoundedPanel chartPanel = new RoundedPanel(20, Theme.CARD);
         chartPanel.setLayout(new BorderLayout(0, 15));
         chartPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
@@ -97,17 +132,31 @@ public class Dashboard extends JFrame {
         chartTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
         chartHeader.add(chartTitle, BorderLayout.WEST);
 
-        JComboBox<String> cbTimeframe = new JComboBox<>(new String[]{"1D", "1W", "1M", "3M", "1Y", "5Y", "ALL"});
-        cbTimeframe.setSelectedItem("1W");
+        JComboBox<String> cbTimeframe = new JComboBox<>(new String[]{"1W (Dinamis)", "1M (Statis)", "3M (Statis)", "ALL"});
         cbTimeframe.setBackground(Theme.BG);
         cbTimeframe.setForeground(Theme.TEXT_PRIMARY);
         cbTimeframe.setCursor(new Cursor(Cursor.HAND_CURSOR));
         chartHeader.add(cbTimeframe, BorderLayout.EAST);
         chartPanel.add(chartHeader, BorderLayout.NORTH);
 
-        final int[][] currentChartData = {{60, 80, 50, 90, 70, 85, 120}};
+        // --- AMBIL DATA GRAFIK DARI DATABASE (7 HARI TERAKHIR) ---
+        int[] dynamicChartData = new int[]{0, 0, 0, 0, 0, 0, 0};
+        try {
+            Connection conn = utils.DatabaseConfig.getKoneksi();
+            Statement stmt = conn.createStatement();
+            ResultSet rsChart = stmt.executeQuery("SELECT SUM(hasil_tahu) as total FROM produksi GROUP BY tanggal ORDER BY tanggal DESC LIMIT 7");
 
-        // --- MOCK CHART & FITUR HOVER ---
+            int idx = 6;
+            while (rsChart.next() && idx >= 0) {
+                dynamicChartData[idx] = rsChart.getInt("total");
+                idx--;
+            }
+        } catch (Exception e) {
+            System.err.println("Gagal memuat data grafik: " + e.getMessage());
+        }
+
+        final int[][] currentChartData = {dynamicChartData};
+
         JPanel mockChart = new JPanel() {
             private int hoveredBarIndex = -1;
 
@@ -135,19 +184,16 @@ public class Dashboard extends JFrame {
                 });
             }
 
-            // Fungsi untuk deteksi apakah kursor ada di atas bar
             private int getHoveredBarIndex(int mouseX, int mouseY) {
                 int[] heights = currentChartData[0];
                 int n = heights.length;
                 if (n == 0) {
                     return -1;
                 }
-
                 int maxPanelWidth = getWidth() - 40;
                 int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
                 int width = (maxPanelWidth - (space * (n - 1))) / n;
                 width = Math.max(2, Math.min(width, 40));
-
                 int totalContentWidth = (width * n) + (space * (n - 1));
                 int startX = 20 + (maxPanelWidth - totalContentWidth) / 2;
 
@@ -166,39 +212,44 @@ public class Dashboard extends JFrame {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
                 int[] heights = currentChartData[0];
                 int n = heights.length;
                 if (n == 0) {
                     return;
                 }
 
+                int maxVal = 1;
+                for (int h : heights) {
+                    if (h > maxVal) {
+                        maxVal = h;
+                    }
+                }
+                double scale = (double) (getHeight() - 40) / maxVal;
+
                 int maxPanelWidth = getWidth() - 40;
                 int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
                 int width = (maxPanelWidth - (space * (n - 1))) / n;
                 width = Math.max(2, Math.min(width, 40));
-
                 int totalContentWidth = (width * n) + (space * (n - 1));
                 int startX = 20 + (maxPanelWidth - totalContentWidth) / 2;
 
-                // Gambar semua bar
                 for (int i = 0; i < n; i++) {
                     int barX = startX + (i * (width + space));
-                    int barY = getHeight() - heights[i] - 10;
+                    int scaledHeight = (int) (heights[i] * scale);
+                    int barY = getHeight() - scaledHeight - 10;
 
-                    // Efek highlight (warna lebih cerah) saat bar disentuh
                     if (i == hoveredBarIndex) {
                         g2.setColor(Theme.BLUE_ACCENT.brighter());
                     } else {
                         g2.setColor(Theme.BLUE_ACCENT);
                     }
-                    g2.fillRect(barX, barY, width, heights[i]);
+                    g2.fillRect(barX, barY, width, scaledHeight);
                 }
 
-                // Gambar tooltip angka DI ATAS semua bar
                 if (hoveredBarIndex != -1) {
                     int barX = startX + (hoveredBarIndex * (width + space));
-                    int barY = getHeight() - heights[hoveredBarIndex] - 10;
+                    int scaledHeight = (int) (heights[hoveredBarIndex] * scale);
+                    int barY = getHeight() - scaledHeight - 10;
                     String valueText = String.valueOf(heights[hoveredBarIndex]);
 
                     FontMetrics fm = g2.getFontMetrics();
@@ -219,40 +270,17 @@ public class Dashboard extends JFrame {
 
         cbTimeframe.addActionListener(e -> {
             String selected = (String) cbTimeframe.getSelectedItem();
-            switch (selected) {
-                case "1D":
-                    chartTitle.setText("Produksi 1 Hari Terakhir");
-                    currentChartData[0] = new int[]{70, 90, 110, 80, 130, 140, 120, 150};
-                    break;
-                case "1W":
-                    chartTitle.setText("Produksi 7 Hari Terakhir");
-                    currentChartData[0] = new int[]{60, 80, 50, 90, 70, 85, 120};
-                    break;
-                case "1M":
-                    chartTitle.setText("Produksi 1 Bulan Terakhir");
-                    currentChartData[0] = new int[]{40, 55, 45, 60, 75, 80, 95, 110, 90, 130, 120, 140, 135};
-                    break;
-                case "3M":
-                    chartTitle.setText("Produksi 3 Bulan Terakhir");
-                    currentChartData[0] = new int[]{30, 45, 60, 50, 70, 85, 75, 90, 110, 100, 120, 140};
-                    break;
-                case "1Y":
-                    chartTitle.setText("Produksi 1 Tahun Terakhir");
-                    currentChartData[0] = new int[]{40, 50, 65, 80, 95, 110, 105, 90, 120, 130, 145, 150};
-                    break;
-                case "5Y":
-                    chartTitle.setText("Produksi 5 Tahun Terakhir");
-                    currentChartData[0] = new int[]{60, 90, 110, 130, 150};
-                    break;
-                case "ALL":
-                    chartTitle.setText("Total Produksi Keseluruhan");
-                    currentChartData[0] = new int[]{30, 50, 40, 70, 60, 90, 85, 110, 130, 120, 140, 150};
-                    break;
+            if (selected.contains("1W")) {
+                chartTitle.setText("Produksi 7 Hari Terakhir");
+                currentChartData[0] = dynamicChartData;
+            } else {
+                chartTitle.setText("Data Dummy Tampilan Statis");
+                currentChartData[0] = new int[]{100, 150, 120, 180, 200, 170, 220, 190, 250};
             }
             mockChart.repaint();
         });
 
-        // --- Status Stok ---
+        // --- STATUS STOK (DINAMIS) ---
         RoundedPanel statusPanel = new RoundedPanel(20, Theme.CARD);
         statusPanel.setPreferredSize(new Dimension(320, 0));
         statusPanel.setLayout(new BorderLayout());
@@ -268,15 +296,43 @@ public class Dashboard extends JFrame {
         statusListPanel.setOpaque(false);
         statusListPanel.add(Box.createVerticalStrut(20));
 
-        statusListPanel.add(createStatusRow("Kedelai", "Min. stok: 100 kg", "85 kg", "Kritis", Theme.RED));
-        statusListPanel.add(Box.createVerticalStrut(15));
-        statusListPanel.add(createStatusRow("Garam", "Min. stok: 5 kg", "18 kg", "Aman", Theme.GREEN));
-        statusListPanel.add(Box.createVerticalStrut(15));
-        statusListPanel.add(createStatusRow("Kayu bakar", "Min. stok: 50 ikat", "32 ikat", "Rendah", Theme.WARNING));
-        statusListPanel.add(Box.createVerticalStrut(15));
-        statusListPanel.add(createStatusRow("Kunyit", "Min. stok: 2 kg", "5 kg", "Aman", Theme.GREEN));
-        statusListPanel.add(Box.createVerticalStrut(15));
-        statusListPanel.add(createStatusRow("Plastik", "Min. 500 pcs", "800 pcs", "Aman", Theme.GREEN));
+        try {
+            Connection conn = utils.DatabaseConfig.getKoneksi();
+            Statement stmt = conn.createStatement();
+            ResultSet rsBahan = stmt.executeQuery("SELECT * FROM bahan_baku ORDER BY id_bahan ASC");
+
+            DecimalFormat df = new DecimalFormat("#.##");
+
+            while (rsBahan.next()) {
+                String nama = rsBahan.getString("nama");
+                double minStok = rsBahan.getDouble("min_stok");
+                double stok = rsBahan.getDouble("stok");
+                String satuan = rsBahan.getString("satuan");
+
+                String sub = "Min. stok: " + df.format(minStok) + " " + satuan;
+                String val = df.format(stok) + " " + satuan;
+
+                String badgeText;
+                Color badgeColor;
+
+                if (stok <= minStok / 2) {
+                    badgeText = "Kritis";
+                    badgeColor = Theme.RED;
+                } else if (stok <= minStok) {
+                    badgeText = "Rendah";
+                    badgeColor = Theme.WARNING;
+                } else {
+                    badgeText = "Aman";
+                    badgeColor = Theme.GREEN;
+                }
+
+                statusListPanel.add(createStatusRow(nama, sub, val, badgeText, badgeColor));
+                statusListPanel.add(Box.createVerticalStrut(15));
+            }
+        } catch (Exception e) {
+            System.err.println("Gagal memuat status bahan baku: " + e.getMessage());
+            statusListPanel.add(new JLabel("Gagal memuat data dari server."));
+        }
 
         JScrollPane statusScroll = new JScrollPane(statusListPanel);
         statusScroll.setOpaque(false);
@@ -323,7 +379,7 @@ public class Dashboard extends JFrame {
         JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         valuePanel.setBackground(Theme.CARD);
         valuePanel.setOpaque(false);
-        JLabel lblValue = new JLabel(value);
+        JLabel lblValue = new JLabel(value != null ? value : "0");
         lblValue.setForeground(Theme.TEXT_PRIMARY);
         lblValue.setFont(new Font("SansSerif", Font.BOLD, 32));
         valuePanel.add(lblValue);
