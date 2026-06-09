@@ -94,7 +94,7 @@ public class Dashboard extends JFrame {
             ResultSet rsPend = stmt.executeQuery("SELECT SUM(total) AS total FROM penjualan WHERE MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE())");
             if (rsPend.next() && rsPend.getString("total") != null) {
                 double totalRp = rsPend.getDouble("total");
-                pendapatan = String.format("%.1f", totalRp / 1000000.0);
+                pendapatan = String.format(new Locale("id", "ID"), "%.1f", totalRp / 1000000.0);
             }
 
             // Tahu Siap Jual
@@ -141,6 +141,24 @@ public class Dashboard extends JFrame {
         chartHeader.add(cbTimeframe, BorderLayout.EAST);
         chartPanel.add(chartHeader, BorderLayout.NORTH);
 
+        // RINGKASAN TOTAL & RATA-RATA)
+        JPanel chartFooter = new JPanel(new BorderLayout());
+        chartFooter.setOpaque(false);
+        chartFooter.setBorder(new EmptyBorder(10, 0, 0, 0));
+
+        JLabel lblTotalSummary = new JLabel("Total minggu ini: 0 potong");
+        lblTotalSummary.setForeground(Theme.TEXT_PRIMARY);
+        lblTotalSummary.setFont(new Font("SansSerif", Font.BOLD, 14));
+
+        JLabel lblAvgSummary = new JLabel("Rata-rata: 0 potong/hari");
+        lblAvgSummary.setForeground(Theme.TEXT_SECONDARY);
+        lblAvgSummary.setFont(new Font("SansSerif", Font.PLAIN, 14));
+
+        chartFooter.add(lblTotalSummary, BorderLayout.WEST);
+        chartFooter.add(lblAvgSummary, BorderLayout.EAST);
+
+        chartPanel.add(chartFooter, BorderLayout.SOUTH);
+
         // --- DATA GRAFIK DINAMIS ---
         final List<String> chartLabels = new ArrayList<>();
         final List<Integer> chartValues = new ArrayList<>();
@@ -150,28 +168,43 @@ public class Dashboard extends JFrame {
             chartValues.clear();
             String selected = (String) cbTimeframe.getSelectedItem();
             String query = "";
+            String timeText = "";
+            int divisor = 1;
 
             if ("1W".equals(selected)) {
                 chartTitle.setText("Produksi 7 Hari Terakhir");
                 query = "SELECT DATE_FORMAT(tanggal, '%d %b') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY tanggal ORDER BY tanggal ASC";
+                timeText = "minggu ini";
+                divisor = 7;
             } else if ("1M".equals(selected)) {
                 chartTitle.setText("Produksi 30 Hari Terakhir");
                 query = "SELECT DATE_FORMAT(tanggal, '%d %b') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) GROUP BY tanggal ORDER BY tanggal ASC";
+                timeText = "bulan ini";
+                divisor = 30;
             } else if ("3M".equals(selected)) {
                 chartTitle.setText("Produksi 3 Bulan Terakhir");
                 query = "SELECT DATE_FORMAT(tanggal, '%b %Y') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) GROUP BY YEAR(tanggal), MONTH(tanggal) ORDER BY YEAR(tanggal), MONTH(tanggal) ASC";
+                timeText = "3 bulan terakhir";
+                divisor = 90;
             } else {
                 chartTitle.setText("Total Produksi Keseluruhan");
                 query = "SELECT DATE_FORMAT(tanggal, '%b %Y') as label, SUM(hasil_tahu) as total FROM produksi GROUP BY YEAR(tanggal), MONTH(tanggal) ORDER BY YEAR(tanggal), MONTH(tanggal) ASC";
+                timeText = "keseluruhan";
             }
+
+            int totalSum = 0;
 
             try {
                 Connection conn = utils.DatabaseConfig.getKoneksi();
                 Statement stmt = conn.createStatement();
                 ResultSet rsChart = stmt.executeQuery(query);
                 while (rsChart.next()) {
-                    chartLabels.add(rsChart.getString("label"));
-                    chartValues.add(rsChart.getInt("total"));
+                    String label = rsChart.getString("label");
+                    int total = rsChart.getInt("total");
+
+                    chartLabels.add(label);
+                    chartValues.add(total);
+                    totalSum += total;
                 }
             } catch (Exception e) {
                 System.err.println("Gagal memuat data grafik: " + e.getMessage());
@@ -179,7 +212,14 @@ public class Dashboard extends JFrame {
             if (chartValues.isEmpty()) {
                 chartLabels.add("-");
                 chartValues.add(0);
+            } else if ("ALL".equals(selected)) {
+                // Untuk "ALL", asumsi 1 bulan = 30 hari untuk rata-rata harian
+                divisor = Math.max(1, chartValues.size() * 30);
             }
+
+            int avgPerDay = (divisor > 0) ? (totalSum / divisor) : 0;
+            lblTotalSummary.setText("Total " + timeText + ": " + String.format(new Locale("id", "ID"), "%,d", totalSum) + " potong");
+            lblAvgSummary.setText("Rata-rata: " + String.format(new Locale("id", "ID"), "%,d", avgPerDay) + " potong/hari");
         };
         fetchChartData.run();
         JPanel mockChart = new JPanel() {
@@ -223,11 +263,7 @@ public class Dashboard extends JFrame {
                 }
                 maxVal = (int) (maxVal * 1.15);
 
-                int paddingLeft = 50;
-                int paddingBottom = 30;
-                int paddingTop = 10;
-                int paddingRight = 10;
-
+                int paddingLeft = 50, paddingBottom = 30, paddingTop = 10, paddingRight = 10;
                 int chartWidth = getWidth() - paddingLeft - paddingRight;
                 int chartHeight = getHeight() - paddingTop - paddingBottom;
 
@@ -274,10 +310,7 @@ public class Dashboard extends JFrame {
                 }
                 maxVal = (int) (maxVal * 1.15);
 
-                int paddingLeft = 50;
-                int paddingBottom = 30;
-                int paddingTop = 10;
-                int paddingRight = 10;
+                int paddingLeft = 50, paddingBottom = 30, paddingTop = 10, paddingRight = 10;
                 int chartWidth = getWidth() - paddingLeft - paddingRight;
                 int chartHeight = getHeight() - paddingTop - paddingBottom;
 
