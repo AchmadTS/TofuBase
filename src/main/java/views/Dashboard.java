@@ -23,7 +23,7 @@ import utils.Theme;
 
 public class Dashboard extends JFrame {
 
-    public Dashboard() {
+    public Dashboard(String userName, String userRole) {
         setTitle("TofuBase - Pabrik Tahu");
         setSize(1200, 800);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -31,7 +31,7 @@ public class Dashboard extends JFrame {
         setLayout(new BorderLayout());
         getContentPane().setBackground(Theme.BG);
 
-        add(new Sidebar(), BorderLayout.WEST);
+        add(new Sidebar(userName, userRole), BorderLayout.WEST);
         add(createMainContent(), BorderLayout.CENTER);
     }
 
@@ -335,11 +335,11 @@ public class Dashboard extends JFrame {
                     g2.setColor(new Color(20, 20, 20, 220));
                     int tooltipX = barX + (width / 2) - (textWidth / 2) - 8;
                     int tooltipY = barY - 45;
-                    
+
                     if (tooltipY < 0) {
                         tooltipY = 0;
                     }
-                    
+
                     g2.fillRoundRect(tooltipX, tooltipY, textWidth + 16, 38, 8, 8);
                     g2.setColor(Color.WHITE);
                     g2.drawString(valueText, tooltipX + 8, tooltipY + 16);

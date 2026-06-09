@@ -1,12 +1,12 @@
 package App;
 
-import views.Dashboard;
+import views.Login;
 import javax.swing.SwingUtilities;
 
 public class TofuBaseApp {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            new Dashboard().setVisible(true);
+            new Login().setVisible(true);
         });
     }
 }
