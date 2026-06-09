@@ -31,7 +31,7 @@ public class Dashboard extends JFrame {
         setLayout(new BorderLayout());
         getContentPane().setBackground(Theme.BG);
 
-        add(new Sidebar(userName, userRole), BorderLayout.WEST);
+        add(new Sidebar(userName, userRole, "Dashboard"), BorderLayout.WEST);
         add(createMainContent(), BorderLayout.CENTER);
     }
 
@@ -479,15 +479,17 @@ public class Dashboard extends JFrame {
     private JPanel createStatCard(String title, String value, String unit, String status, Color statusColor) {
         RoundedPanel card = new RoundedPanel(20, Theme.CARD);
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(new EmptyBorder(15, 15, 15, 15));
+        card.setBorder(new EmptyBorder(15, 10, 15, 10));
 
-        JLabel lblTitle = new JLabel(title);
+        JLabel lblTitle = new JLabel(title, SwingConstants.CENTER);
         lblTitle.setForeground(Theme.TEXT_SECONDARY);
         lblTitle.setFont(new Font("SansSerif", Font.BOLD, 10));
+        lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
+        JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         valuePanel.setBackground(Theme.CARD);
         valuePanel.setOpaque(false);
+        valuePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
         JLabel lblValue = new JLabel(value != null ? value : "0");
         lblValue.setForeground(Theme.TEXT_PRIMARY);
         lblValue.setFont(new Font("SansSerif", Font.BOLD, 32));
@@ -498,9 +500,10 @@ public class Dashboard extends JFrame {
             }
         });
 
-        JLabel lblStatus = new JLabel(status);
+        JLabel lblStatus = new JLabel(status, SwingConstants.CENTER);
         lblStatus.setForeground(statusColor);
         lblStatus.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        lblStatus.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         card.add(lblTitle);
         card.add(Box.createVerticalStrut(10));
