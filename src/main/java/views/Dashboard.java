@@ -49,7 +49,7 @@ public class Dashboard extends JFrame {
         JLabel headerTitle = new JLabel("Dashboard");
         headerTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
         headerTitle.setForeground(Theme.TEXT_PRIMARY);
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", new Locale("id", "ID"));
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("EEEE, d MMMM yyyy", Locale.forLanguageTag("id-ID"));
         JLabel headerDate = new JLabel(LocalDate.now().format(formatter));
         headerDate.setFont(new Font("SansSerif", Font.PLAIN, 14));
         headerDate.setForeground(Theme.TEXT_SECONDARY);
@@ -94,7 +94,7 @@ public class Dashboard extends JFrame {
             ResultSet rsPend = stmt.executeQuery("SELECT SUM(total) AS total FROM penjualan WHERE MONTH(tanggal) = MONTH(CURDATE()) AND YEAR(tanggal) = YEAR(CURDATE())");
             if (rsPend.next() && rsPend.getString("total") != null) {
                 double totalRp = rsPend.getDouble("total");
-                pendapatan = String.format(new Locale("id", "ID"), "%.1f", totalRp / 1000000.0);
+                pendapatan = String.format(Locale.forLanguageTag("id-ID"), "%.1f", totalRp / 1000000.0);
             }
 
             // Tahu Siap Jual
@@ -218,8 +218,8 @@ public class Dashboard extends JFrame {
             }
 
             int avgPerDay = (divisor > 0) ? (totalSum / divisor) : 0;
-            lblTotalSummary.setText("Total " + timeText + ": " + String.format(new Locale("id", "ID"), "%,d", totalSum) + " potong");
-            lblAvgSummary.setText("Rata-rata: " + String.format(new Locale("id", "ID"), "%,d", avgPerDay) + " potong/hari");
+            lblTotalSummary.setText("Total " + timeText + ": " + String.format(Locale.forLanguageTag("id-ID"), "%,d", totalSum) + " potong");
+            lblAvgSummary.setText("Rata-rata: " + String.format(Locale.forLanguageTag("id-ID"), "%,d", avgPerDay) + " potong/hari");
         };
         fetchChartData.run();
         JPanel mockChart = new JPanel() {
