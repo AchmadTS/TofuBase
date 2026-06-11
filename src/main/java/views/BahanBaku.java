@@ -154,7 +154,7 @@ public class BahanBaku extends JPanel {
                 if (keyword.isEmpty()) {
                     return "";
                 }
-                return "WHERE nama LIKE '%" + keyword + "%' OR id_bahan LIKE '%" + keyword + "%' ";
+                return "WHERE nama LIKE '" + keyword + "%' OR id_bahan LIKE '" + keyword + "%' ";
             }
 
             @Override
@@ -162,7 +162,7 @@ public class BahanBaku extends JPanel {
                 try {
                     Connection conn = utils.DatabaseConfig.getKoneksi();
                     Statement stmt = conn.createStatement();
-                    String query = "SELECT COUNT(DISTINCT nama) AS total FROM bahan_baku " + buildWhereClause(keyword);
+                    String query = "SELECT COUNT(*) AS total FROM (SELECT 1 FROM bahan_baku " + buildWhereClause(keyword) + " GROUP BY nama, satuan) AS sub";
                     ResultSet rs = stmt.executeQuery(query);
                     if (rs.next()) {
                         return rs.getInt("total");
@@ -179,13 +179,19 @@ public class BahanBaku extends JPanel {
                 try {
                     Connection conn = utils.DatabaseConfig.getKoneksi();
                     Statement stmt = conn.createStatement();
-                    String query = "SELECT MIN(id_bahan) AS id_bahan, nama, satuan, "
-                            + "SUM(stok) AS total_stok, "
-                            + "AVG(harga_beli) AS rata_harga, "
-                            + "MAX(min_stok) AS batas_stok "
-                            + "FROM bahan_baku " + buildWhereClause(keyword)
-                            + "GROUP BY nama, satuan "
-                            + "ORDER BY nama ASC LIMIT " + limit + " OFFSET " + offset;
+                    String query = "SELECT MIN(b.id_bahan) AS id_bahan, b.nama, b.satuan, "
+                            + "SUM(b.stok) AS total_stok, "
+                            + "AVG(b.harga_beli) AS rata_harga, "
+                            + "MAX(b.min_stok) AS batas_stok "
+                            + "FROM ("
+                            + "   SELECT nama, satuan FROM bahan_baku "
+                            + buildWhereClause(keyword)
+                            + "   GROUP BY nama, satuan "
+                            + "   ORDER BY nama ASC LIMIT " + limit + " OFFSET " + offset
+                            + ") AS filter_b "
+                            + "JOIN bahan_baku b ON b.nama = filter_b.nama AND b.satuan = filter_b.satuan "
+                            + "GROUP BY b.nama, b.satuan "
+                            + "ORDER BY b.nama ASC";
                     ResultSet rs = stmt.executeQuery(query);
                     java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
                     while (rs.next()) {
