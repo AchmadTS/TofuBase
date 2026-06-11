@@ -3,7 +3,6 @@ package views;
 import components.ActivityTable;
 import components.ModernScrollBarUI;
 import components.RoundedPanel;
-import components.Sidebar;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -21,17 +20,11 @@ import java.util.List;
 import java.util.Locale;
 import utils.Theme;
 
-public class Dashboard extends JFrame {
+public class Dashboard extends JPanel {
 
     public Dashboard(String userName, String userRole) {
-        setTitle("TofuBase - Pabrik Tahu");
-        setSize(1200, 800);
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setLocationRelativeTo(null);
         setLayout(new BorderLayout());
-        getContentPane().setBackground(Theme.BG);
-
-        add(new Sidebar(userName, userRole, "Dashboard"), BorderLayout.WEST);
+        setBackground(Theme.BG);
         add(createMainContent(), BorderLayout.CENTER);
     }
 
@@ -85,9 +78,9 @@ public class Dashboard extends JFrame {
             }
 
             // Stok Kedelai
-            ResultSet rsKed = stmt.executeQuery("SELECT stok FROM bahan_baku WHERE nama LIKE '%Kedelai%' LIMIT 1");
-            if (rsKed.next()) {
-                stokKedelai = String.valueOf(rsKed.getInt("stok"));
+            ResultSet rsKed = stmt.executeQuery("SELECT SUM(stok) AS total_stok FROM bahan_baku WHERE nama LIKE '%Kedelai%'");
+            if (rsKed.next() && rsKed.getString("total_stok") != null) {
+                stokKedelai = rsKed.getString("total_stok");
             }
 
             // Pendapatan (Total Penjualan Bulan Ini)
@@ -389,7 +382,7 @@ public class Dashboard extends JFrame {
             mockChart.repaint();
         });
 
-        // --- STATUS STOK (DINAMIS) ---
+        // --- STATUS STOK ---
         RoundedPanel statusPanel = new RoundedPanel(20, Theme.CARD);
         statusPanel.setPreferredSize(new Dimension(320, 0));
         statusPanel.setLayout(new BorderLayout());
@@ -408,19 +401,23 @@ public class Dashboard extends JFrame {
         try {
             Connection conn = utils.DatabaseConfig.getKoneksi();
             Statement stmt = conn.createStatement();
-            ResultSet rsBahan = stmt.executeQuery("SELECT * FROM bahan_baku ORDER BY id_bahan ASC");
+            String query = "SELECT nama, satuan, MAX(min_stok) as batas_stok, SUM(stok) as total_stok "
+                    + "FROM bahan_baku "
+                    + "GROUP BY nama, satuan "
+                    + "ORDER BY nama ASC";
 
+            ResultSet rsBahan = stmt.executeQuery(query);
             DecimalFormat df = new DecimalFormat("#.##");
 
             while (rsBahan.next()) {
                 String nama = rsBahan.getString("nama");
-                double minStok = rsBahan.getDouble("min_stok");
-                double stok = rsBahan.getDouble("stok");
                 String satuan = rsBahan.getString("satuan");
+
+                double minStok = rsBahan.getDouble("batas_stok");
+                double stok = rsBahan.getDouble("total_stok");
 
                 String sub = "Min. stok: " + df.format(minStok) + " " + satuan;
                 String val = df.format(stok) + " " + satuan;
-
                 String badgeText;
                 Color badgeColor;
 
@@ -450,13 +447,86 @@ public class Dashboard extends JFrame {
         statusScroll.getVerticalScrollBar().setUnitIncrement(16);
         statusScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
         statusPanel.add(statusScroll, BorderLayout.CENTER);
-
         middlePanel.add(chartPanel, BorderLayout.CENTER);
         middlePanel.add(statusPanel, BorderLayout.EAST);
 
-        // Panggil Class ActivityTable
-        ActivityTable bottomPanel = new ActivityTable();
+        // --- TABEL AKTIVITAS ---
+        String[] dashboardHeaders = {"Tanggal", "Batch", "Kedelai Digunakan", "Hasil Tahu", "Operator", "Status"};
+        ActivityTable bottomPanel = new ActivityTable("Aktivitas Produksi Terbaru", dashboardHeaders, 5, new ActivityTable.DataProvider() {
 
+            private String buildWhereClause(String keyword) {
+                if (keyword.isEmpty()) {
+                    return "";
+                }
+                return "WHERE p.batch LIKE '%" + keyword + "%' OR u.nama LIKE '%" + keyword + "%' OR p.status LIKE '%" + keyword + "%' ";
+            }
+
+            private final String baseFrom = "FROM produksi p "
+                    + "JOIN users u ON p.id_user = u.id_user "
+                    + "LEFT JOIN ("
+                    + "   SELECT rp.id_produksi, rp.jumlah, bb.satuan "
+                    + "   FROM record_produksi rp "
+                    + "   JOIN bahan_baku bb ON rp.id_bahan = bb.id_bahan "
+                    + "   WHERE bb.nama LIKE '%Kedelai%' "
+                    + ") AS pemakaian_kedelai ON p.id_produksi = pemakaian_kedelai.id_produksi ";
+
+            @Override
+            public int getTotalRowCount(String keyword) {
+                try {
+                    Connection conn = utils.DatabaseConfig.getKoneksi();
+                    Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery("SELECT COUNT(*) AS total " + baseFrom + buildWhereClause(keyword));
+                    if (rs.next()) {
+                        return rs.getInt("total");
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return 0;
+            }
+
+            @Override
+            public List<String[]> getPageData(int limit, int offset, String keyword) {
+                List<String[]> data = new ArrayList<>();
+                String query = "SELECT p.tanggal, p.batch, p.hasil_tahu, p.status, u.nama AS nama_operator, "
+                        + "pemakaian_kedelai.jumlah AS jumlah_kedelai, pemakaian_kedelai.satuan AS satuan_kedelai "
+                        + baseFrom + buildWhereClause(keyword)
+                        + "ORDER BY p.tanggal DESC, p.id_produksi DESC LIMIT " + limit + " OFFSET " + offset;
+
+                try {
+                    Connection conn = utils.DatabaseConfig.getKoneksi();
+                    Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery(query);
+                    java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy");
+
+                    while (rs.next()) {
+                        java.sql.Date dbDate = rs.getDate("tanggal");
+                        String date = (dbDate != null) ? sdf.format(dbDate) : "-";
+                        String batch = rs.getString("batch");
+                        String hasil = rs.getInt("hasil_tahu") + " potong";
+
+                        String kedelai = "-";
+                        if (rs.getString("jumlah_kedelai") != null) {
+                            double jumlah = rs.getDouble("jumlah_kedelai");
+                            String satuan = rs.getString("satuan_kedelai");
+                            kedelai = (jumlah == (long) jumlah) ? String.format("%d %s", (long) jumlah, satuan) : String.format("%s %s", jumlah, satuan);
+                        }
+
+                        String operator = rs.getString("nama_operator");
+                        if (operator != null && operator.contains(" ")) {
+                            operator = operator.split(" ")[0];
+                        }
+
+                        data.add(new String[]{date, batch, kedelai, hasil, operator, rs.getString("status")});
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return data;
+            }
+        }
+        );
+        bottomPanel.setPreferredSize(new Dimension(0, 390));
         dashboardContainer.add(topCardsPanel);
         dashboardContainer.add(Box.createVerticalStrut(20));
         dashboardContainer.add(middlePanel);

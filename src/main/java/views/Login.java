@@ -396,7 +396,7 @@ public class Login extends JFrame {
 
                         // Masuk Dashboard
                         dispose();
-                        new Dashboard(namaUser, roleUser).setVisible(true);
+                        new MainFrame(namaUser, roleUser).setVisible(true);
 
                     } else {
                         JOptionPane.showMessageDialog(Login.this, "Email atau Kata Sandi salah!", "Login Gagal", JOptionPane.ERROR_MESSAGE);

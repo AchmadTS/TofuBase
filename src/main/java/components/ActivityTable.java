@@ -5,107 +5,54 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
-import java.util.ArrayList;
 import java.util.List;
 import utils.Theme;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.sql.Date;
-import java.text.SimpleDateFormat;
 
 public class ActivityTable extends RoundedPanel {
+    public interface DataProvider {
 
-    private List<String[]> allActivityData = new ArrayList<>();
-    private List<String[]> filteredData = new ArrayList<>();
+        int getTotalRowCount(String keyword);
+
+        List<String[]> getPageData(int limit, int offset, String keyword);
+    }
+
+    private String title;
+    private String[] headers;
+    private int statusColIndex;
+    private DataProvider dataProvider;
+
     private int currentPage = 1;
     private int entriesPerPage = 5;
+    private int totalData = 0;
 
     private JPanel tableContentPanel;
     private JLabel lblPageInfo;
-    private JButton btnPageNum;
-    private JButton btnPrev;
-    private JButton btnNext;
+    private JButton btnPageNum, btnPrev, btnNext;
     private JTextField txtSearch;
     private JComboBox<String> cbEntries;
 
-    public ActivityTable() {
+    public ActivityTable(String title, String[] headers, int statusColIndex, DataProvider dataProvider) {
         super(20, Theme.CARD);
+        this.title = title;
+        this.headers = headers;
+        this.statusColIndex = statusColIndex;
+        this.dataProvider = dataProvider;
+
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(20, 20, 20, 20));
 
-        setPreferredSize(new Dimension(0, 390));
-        setMaximumSize(new Dimension(Integer.MAX_VALUE, 390));
-        loadDataDariDatabase();
+        // Hilangkan hardcode tinggi tabel agar menyesuaikan kontainer (Bahan Baku / Dashboard)
+        setMinimumSize(new Dimension(0, 390));
 
         buildUI();
         updateTableModel();
     }
 
-    private void loadDataDariDatabase() {
-        allActivityData.clear();
-
-        try {
-            Connection conn = utils.DatabaseConfig.getKoneksi();
-            Statement stmt = conn.createStatement();
-            String query = "SELECT "
-                    + "  p.tanggal, "
-                    + "  p.batch, "
-                    + "  p.hasil_tahu, "
-                    + "  p.status, "
-                    + "  u.nama AS nama_operator, "
-                    + "  rp.jumlah AS jumlah_kedelai, "
-                    + "  rp.satuan AS satuan_kedelai "
-                    + "FROM produksi p "
-                    + "JOIN users u ON p.id_user = u.id_user "
-                    + "LEFT JOIN record_produksi rp ON p.id_produksi = rp.id_produksi AND rp.id_bahan = 1 "
-                    + "ORDER BY p.tanggal DESC, p.id_produksi DESC";
-
-            ResultSet rs = stmt.executeQuery(query);
-            SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy");
-
-            while (rs.next()) {
-                Date dbDate = rs.getDate("tanggal");
-                String date = (dbDate != null) ? sdf.format(dbDate) : "-";
-                String batch = rs.getString("batch");
-                String hasil = rs.getInt("hasil_tahu") + " potong";
-                String kedelai = "-";
-                if (rs.getString("jumlah_kedelai") != null) {
-                    double jumlah = rs.getDouble("jumlah_kedelai");
-                    String satuan = rs.getString("satuan_kedelai");
-                    if (jumlah == (long) jumlah) {
-                        kedelai = String.format("%d %s", (long) jumlah, satuan);
-                    } else {
-                        kedelai = String.format("%s %s", jumlah, satuan);
-                    }
-                }
-
-                String operator = rs.getString("nama_operator");
-                if (operator != null && operator.contains(" ")) {
-                    operator = operator.split(" ")[0];
-                }
-                String status = rs.getString("status");
-                allActivityData.add(new String[]{date, batch, kedelai, hasil, operator, status});
-            }
-
-        } catch (Exception e) {
-            System.err.println("Gagal menarik data dari database: " + e.getMessage());
-            e.printStackTrace();
-        }
-
-        if (allActivityData.isEmpty()) {
-            System.out.println("Tidak ada aktivitas produksi terbaru...");
-        } else {
-            filteredData.addAll(allActivityData);
-        }
-    }
-
     private void buildUI() {
-        // --- Judul & Kontrol ---
         JPanel topHeader = new JPanel(new BorderLayout());
         topHeader.setOpaque(false);
 
-        JLabel lblTitle = new JLabel("Aktivitas Produksi Terbaru");
+        JLabel lblTitle = new JLabel(title);
         lblTitle.setForeground(Theme.TEXT_PRIMARY);
         lblTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
 
@@ -149,6 +96,7 @@ public class ActivityTable extends RoundedPanel {
                 BorderFactory.createLineBorder(Theme.BORDER),
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)
         ));
+
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) {
                 search();
@@ -178,22 +126,22 @@ public class ActivityTable extends RoundedPanel {
         topHeader.add(controlRow, BorderLayout.CENTER);
         add(topHeader, BorderLayout.NORTH);
 
-        // --- Tabel & Internal Scroll ---
+        // --- Grid Tabel Dinamis Sesuai Jumlah Header ---
         tableContentPanel = new JPanel();
         tableContentPanel.setLayout(new BoxLayout(tableContentPanel, BoxLayout.Y_AXIS));
         tableContentPanel.setOpaque(false);
 
-        JPanel headerRowPanel = new JPanel(new GridLayout(1, 6, 0, 0));
+        int cols = headers.length;
+        JPanel headerRowPanel = new JPanel(new GridLayout(1, cols, 0, 0));
         headerRowPanel.setOpaque(true);
         headerRowPanel.setBackground(Theme.CARD);
         headerRowPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
 
-        String[] headers = {"Tanggal", "Batch", "Kedelai Digunakan", "Hasil Tahu", "Operator", "Status"};
-        for (int i = 0; i < headers.length; i++) {
+        for (int i = 0; i < cols; i++) {
             JLabel l = new JLabel(headers[i]);
             l.setForeground(Theme.TEXT_SECONDARY);
             l.setFont(new Font("SansSerif", Font.PLAIN, 12));
-            if (i < headers.length - 1) {
+            if (i < cols - 1) {
                 l.setBorder(BorderFactory.createCompoundBorder(
                         BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER),
                         BorderFactory.createEmptyBorder(10, 5, 10, 5)
@@ -209,16 +157,13 @@ public class ActivityTable extends RoundedPanel {
         tableScroll.getViewport().setOpaque(false);
         tableScroll.setBorder(null);
 
-        // Header
         tableScroll.setColumnHeaderView(headerRowPanel);
         tableScroll.getColumnHeader().setOpaque(false);
-
         tableScroll.getVerticalScrollBar().setUnitIncrement(16);
         tableScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
 
         tableScroll.setPreferredSize(new Dimension(0, 200));
         tableScroll.setMinimumSize(new Dimension(0, 200));
-        tableScroll.setMaximumSize(new Dimension(Integer.MAX_VALUE, 200));
 
         add(tableScroll, BorderLayout.CENTER);
 
@@ -248,7 +193,6 @@ public class ActivityTable extends RoundedPanel {
         btnPageNum.setBackground(Theme.BLUE_ACCENT);
         btnPageNum.setForeground(Color.WHITE);
         btnPageNum.setFocusPainted(false);
-        btnPageNum.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         btnNext = new JButton("Selanjutnya");
         btnNext.setBackground(Theme.BG);
@@ -271,24 +215,13 @@ public class ActivityTable extends RoundedPanel {
     }
 
     private void updateTableModel() {
-        String keyword = txtSearch.getText().toLowerCase();
-        filteredData.clear();
-        for (String[] row : allActivityData) {
-            boolean match = false;
-            for (String cell : row) {
-                if (cell.toLowerCase().contains(keyword)) {
-                    match = true;
-                    break;
-                }
-            }
-            if (match) {
-                filteredData.add(row);
-            }
-        }
+        String keyword = txtSearch.getText().trim();
+        tableContentPanel.removeAll();
 
-        int totalData = filteredData.size();
+        // 1. Dapatkan Total Data dari Provider
+        totalData = dataProvider.getTotalRowCount(keyword);
+
         int totalPages = (int) Math.ceil((double) totalData / entriesPerPage);
-
         if (totalPages == 0) {
             totalPages = 1;
         }
@@ -299,31 +232,32 @@ public class ActivityTable extends RoundedPanel {
             currentPage = 1;
         }
 
-        int startIndex = (currentPage - 1) * entriesPerPage;
-        int endIndex = Math.min(startIndex + entriesPerPage, totalData);
+        int offset = (currentPage - 1) * entriesPerPage;
 
-        tableContentPanel.removeAll();
+        // 2. Dapatkan Baris Data Matang dari Provider
+        List<String[]> pageData = dataProvider.getPageData(entriesPerPage, offset, keyword);
 
-        if (totalData == 0) {
+        // 3. Render Tabel Dinamis
+        if (pageData.isEmpty()) {
             JLabel lblEmpty = new JLabel("Data tidak ditemukan");
             lblEmpty.setForeground(Theme.TEXT_SECONDARY);
             lblEmpty.setBorder(new EmptyBorder(20, 0, 20, 0));
             lblEmpty.setAlignmentX(Component.CENTER_ALIGNMENT);
             tableContentPanel.add(lblEmpty);
         } else {
-            for (int i = startIndex; i < endIndex; i++) {
-                String[] row = filteredData.get(i);
-                Color badgeColor = row[5].equals("Selesai") ? Theme.GREEN : Theme.WARNING;
-                boolean isLastRow = (i == endIndex - 1);
-                tableContentPanel.add(createTableRow(row[0], row[1], row[2], row[3], row[4], row[5], badgeColor, isLastRow));
+            for (int i = 0; i < pageData.size(); i++) {
+                String[] rowData = pageData.get(i);
+                boolean isLastRow = (i == pageData.size() - 1);
+                tableContentPanel.add(createDynamicTableRow(rowData, isLastRow));
             }
         }
 
         tableContentPanel.add(Box.createVerticalGlue());
 
-        String infoText = String.format("Menampilkan %d sampai %d dari %d data",
-                (totalData == 0 ? 0 : startIndex + 1), endIndex, totalData);
-        lblPageInfo.setText(infoText);
+        int startItem = (totalData == 0) ? 0 : offset + 1;
+        int endItem = Math.min(offset + entriesPerPage, totalData);
+
+        lblPageInfo.setText(String.format("Menampilkan %d sampai %d dari %d data", startItem, endItem, totalData));
         btnPageNum.setText(String.valueOf(currentPage));
 
         btnPrev.setEnabled(currentPage > 1);
@@ -333,8 +267,9 @@ public class ActivityTable extends RoundedPanel {
         tableContentPanel.repaint();
     }
 
-    private JPanel createTableRow(String date, String batch, String kedelai, String hasil, String operator, String status, Color badgeColor, boolean isLastRow) {
-        JPanel row = new JPanel(new GridLayout(1, 6, 0, 0));
+    private JPanel createDynamicTableRow(String[] rowData, boolean isLastRow) {
+        int cols = headers.length;
+        JPanel row = new JPanel(new GridLayout(1, cols, 0, 0));
         row.setOpaque(false);
         row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
 
@@ -342,29 +277,44 @@ public class ActivityTable extends RoundedPanel {
             row.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
         }
 
-        row.add(createTableCell(date, Theme.TEXT_PRIMARY, true));
-        row.add(createTableCell(batch, Theme.TEXT_SECONDARY, true));
-        row.add(createTableCell(kedelai, Theme.TEXT_PRIMARY, true));
-        row.add(createTableCell(hasil, Theme.TEXT_PRIMARY, true));
-        row.add(createTableCell(operator, Theme.TEXT_PRIMARY, true));
+        for (int i = 0; i < cols; i++) {
+            boolean addRightBorder = (i < cols - 1);
+            String cellData = (i < rowData.length && rowData[i] != null) ? rowData[i] : "-";
 
-        JPanel badgeWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
-        badgeWrapper.setOpaque(false);
+            if (i == statusColIndex) {
+                Color badgeColor = Theme.TEXT_PRIMARY;
+                String lowerStr = cellData.toLowerCase();
+                if (lowerStr.contains("selesai") || lowerStr.contains("lunas") || lowerStr.contains("aman")) {
+                    badgeColor = Theme.GREEN;
+                } else if (lowerStr.contains("proses") || lowerStr.contains("hutang") || lowerStr.contains("rendah")) {
+                    badgeColor = Theme.WARNING;
+                } else if (lowerStr.contains("batal") || lowerStr.contains("kritis")) {
+                    badgeColor = Theme.RED;
+                }
 
-        JLabel lblBadge = new JLabel(status, SwingConstants.CENTER);
-        lblBadge.setOpaque(true);
-        lblBadge.setBackground(new Color(0, 0, 0, 0));
-        lblBadge.setForeground(badgeColor);
-        lblBadge.setFont(new Font("SansSerif", Font.BOLD, 11));
-        lblBadge.setBorder(new EmptyBorder(4, 10, 4, 10));
+                JPanel badgeWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
+                badgeWrapper.setOpaque(false);
+                if (addRightBorder) {
+                    badgeWrapper.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
+                }
 
-        RoundedPanel pillPanel = new RoundedPanel(12, new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 40));
-        pillPanel.setLayout(new BorderLayout());
-        pillPanel.add(lblBadge, BorderLayout.CENTER);
+                JLabel lblBadge = new JLabel(cellData, SwingConstants.CENTER);
+                lblBadge.setOpaque(true);
+                lblBadge.setBackground(new Color(0, 0, 0, 0));
+                lblBadge.setForeground(badgeColor);
+                lblBadge.setFont(new Font("SansSerif", Font.BOLD, 11));
+                lblBadge.setBorder(new EmptyBorder(4, 10, 4, 10));
 
-        badgeWrapper.add(pillPanel);
-        row.add(badgeWrapper);
+                RoundedPanel pillPanel = new RoundedPanel(12, new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 40));
+                pillPanel.setLayout(new BorderLayout());
+                pillPanel.add(lblBadge, BorderLayout.CENTER);
 
+                badgeWrapper.add(pillPanel);
+                row.add(badgeWrapper);
+            } else {
+                row.add(createTableCell(cellData, (i == 1) ? Theme.TEXT_SECONDARY : Theme.TEXT_PRIMARY, addRightBorder));
+            }
+        }
         return row;
     }
 

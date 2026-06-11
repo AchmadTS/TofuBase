@@ -1,6 +1,6 @@
 package components;
-import views.BahanBaku;
-import views.Dashboard;
+
+import views.Login;
 import utils.Theme;
 
 import javax.swing.*;
@@ -8,16 +8,22 @@ import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Consumer;
 
 public class Sidebar extends JPanel {
 
     private String currentUserName;
     private String currentUserRole;
-    private JFrame parentFrame; 
+    private Consumer<String> navigationCallback;
+    private Map<String, JPanel> menuPanels = new HashMap<>();
+    private Map<String, JLabel[]> menuLabels = new HashMap<>();
 
-    public Sidebar(String userName, String userRole, String activeMenuName) {
+    public Sidebar(String userName, String userRole, String activeMenuName, Consumer<String> onNavigate) {
         this.currentUserName = userName;
         this.currentUserRole = userRole;
+        this.navigationCallback = onNavigate;
 
         setPreferredSize(new Dimension(250, 0));
         setBackground(Theme.SIDEBAR);
@@ -82,7 +88,6 @@ public class Sidebar extends JPanel {
         avatar.setMaximumSize(new Dimension(36, 36));
         avatar.setLayout(new BorderLayout());
 
-        // Inisial Nama (Misal: Achmad Tirto Sudiro -> AS)
         String initials = "US";
         if (userName != null && !userName.trim().isEmpty()) {
             String[] words = userName.trim().split("\\s+");
@@ -119,9 +124,11 @@ public class Sidebar extends JPanel {
             public void mouseClicked(MouseEvent e) {
                 int confirm = JOptionPane.showConfirmDialog(Sidebar.this, "Apakah Anda yakin ingin keluar?", "Konfirmasi Log Out", JOptionPane.YES_NO_OPTION);
                 if (confirm == JOptionPane.YES_OPTION) {
-                    JFrame current = getParentFrame();
-                    if (current != null) current.dispose();
-                    new views.Login().setVisible(true);
+                    Window window = SwingUtilities.getWindowAncestor(Sidebar.this);
+                    if (window != null) {
+                        window.dispose();
+                    }
+                    new Login().setVisible(true);
                 }
             }
         });
@@ -130,109 +137,60 @@ public class Sidebar extends JPanel {
     }
 
     private JPanel createNavMenuItem(String icon, String text, String activeMenuName) {
-        boolean isActive = text.equals(activeMenuName);
-
-        JPanel panel;
-        if (isActive) {
-            panel = new RoundedPanel(15, new Color(220, 235, 255));
-        } else {
-            panel = new JPanel();
-            panel.setOpaque(false);
-        }
-
+        RoundedPanel panel = new RoundedPanel(15, Theme.SIDEBAR);
         panel.setLayout(new BoxLayout(panel, BoxLayout.X_AXIS));
         panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40)); 
+        panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
         panel.setBorder(new EmptyBorder(0, 15, 0, 15));
-        
-        if (!isActive) {
-            panel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        }
-
-        Color fgColor = isActive ? Theme.BLUE_ACCENT : Theme.TEXT_SECONDARY;
-        int fontWeight = isActive ? Font.BOLD : Font.PLAIN;
+        panel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
         JLabel lblIcon = new JLabel(icon, SwingConstants.CENTER);
-        lblIcon.setForeground(fgColor);
-        lblIcon.setFont(new Font("SansSerif", fontWeight, isActive ? 18 : 16));
+        lblIcon.setFont(new Font("SansSerif", Font.PLAIN, 16));
         lblIcon.setPreferredSize(new Dimension(24, 24));
         lblIcon.setMaximumSize(new Dimension(24, 24));
 
         JLabel lblText = new JLabel(text);
-        lblText.setFont(new Font("SansSerif", fontWeight, 14));
-        lblText.setForeground(fgColor);
+        lblText.setFont(new Font("SansSerif", Font.PLAIN, 14));
 
         panel.add(lblIcon);
         panel.add(Box.createHorizontalStrut(10));
         panel.add(lblText);
-        if (!isActive) {
-            panel.addMouseListener(new MouseAdapter() {
-                @Override
-                public void mouseEntered(MouseEvent e) {
-                    lblText.setForeground(Theme.TEXT_PRIMARY);
-                    lblIcon.setForeground(Theme.TEXT_PRIMARY);
-                }
 
-                @Override
-                public void mouseExited(MouseEvent e) {
-                    lblText.setForeground(Theme.TEXT_SECONDARY);
-                    lblIcon.setForeground(Theme.TEXT_SECONDARY);
-                }
+        menuPanels.put(text, panel);
+        menuLabels.put(text, new JLabel[]{lblIcon, lblText});
 
-                @Override
-                public void mouseClicked(MouseEvent e) {
-                    handleNavigation(text);
+        panel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (navigationCallback != null) {
+                    navigationCallback.accept(text);
                 }
-            });
-        }
+            }
+        });
 
         return panel;
     }
 
-    private JFrame getParentFrame() {
-        if (parentFrame == null) {
-            Window window = SwingUtilities.getWindowAncestor(this);
-            if (window instanceof JFrame) {
-                parentFrame = (JFrame) window;
-            }
-        }
-        return parentFrame;
-    }
+    public void setActiveMenu(String activeMenuName) {
+        for (String menuName : menuPanels.keySet()) {
+            RoundedPanel panel = (RoundedPanel) menuPanels.get(menuName);
+            JLabel[] labels = menuLabels.get(menuName);
+            boolean isActive = menuName.equals(activeMenuName);
 
-    private void handleNavigation(String destination) {
-        JFrame currentFrame = getParentFrame();        
-        int windowState = JFrame.NORMAL;
-        Rectangle windowBounds = null;
-        
-        if (currentFrame != null) {
-            windowState = currentFrame.getExtendedState();
-            windowBounds = currentFrame.getBounds();
-        }
-
-        JFrame nextFrame = null;
-        switch (destination) {
-            case "Dashboard":
-                nextFrame = new Dashboard(currentUserName, currentUserRole);
-                break;
-            case "Bahan Baku":
-                nextFrame = new BahanBaku(currentUserName, currentUserRole);
-                break;
-            default:
-                JOptionPane.showMessageDialog(this, "Halaman " + destination + " sedang dalam pengembangan.", "Info", JOptionPane.INFORMATION_MESSAGE);
-                return;
-        }
-
-        if (nextFrame != null) {
-            if (windowBounds != null) {
-                nextFrame.setBounds(windowBounds);
+            if (isActive) {
+                panel.setBackground(new Color(220, 235, 255));
+                labels[0].setForeground(Theme.BLUE_ACCENT);
+                labels[0].setFont(new Font("SansSerif", Font.BOLD, 18));
+                labels[1].setForeground(Theme.BLUE_ACCENT);
+                labels[1].setFont(new Font("SansSerif", Font.BOLD, 14));
+            } else {
+                panel.setBackground(Theme.SIDEBAR);
+                labels[0].setForeground(Theme.TEXT_SECONDARY);
+                labels[0].setFont(new Font("SansSerif", Font.PLAIN, 16));
+                labels[1].setForeground(Theme.TEXT_SECONDARY);
+                labels[1].setFont(new Font("SansSerif", Font.PLAIN, 14));
             }
-            nextFrame.setExtendedState(windowState);
-            
-            if (currentFrame != null) {
-                currentFrame.dispose();
-            }
-            
-            nextFrame.setVisible(true);
+            panel.repaint();
         }
     }
 }
