@@ -466,10 +466,4 @@ public class Login extends JFrame {
         panel.add(lblTitle);
         return panel;
     }
-
-    public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> {
-            new Login().setVisible(true);
-        });
-    }
 }
