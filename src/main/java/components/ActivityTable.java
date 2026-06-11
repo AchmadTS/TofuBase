@@ -20,11 +20,9 @@ public class ActivityTable extends RoundedPanel {
     private String[] headers;
     private int statusColIndex;
     private DataProvider dataProvider;
-
     private int currentPage = 1;
     private int entriesPerPage = 5;
     private int totalData = 0;
-
     private JPanel tableContentPanel;
     private JLabel lblPageInfo;
     private JButton btnPageNum, btnPrev, btnNext;
@@ -40,10 +38,7 @@ public class ActivityTable extends RoundedPanel {
 
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(20, 20, 20, 20));
-
-        // Hilangkan hardcode tinggi tabel agar menyesuaikan kontainer (Bahan Baku / Dashboard)
         setMinimumSize(new Dimension(0, 390));
-
         buildUI();
         updateTableModel();
     }
@@ -65,7 +60,7 @@ public class ActivityTable extends RoundedPanel {
         JLabel lblShow = new JLabel("Tampilkan ");
         lblShow.setForeground(Theme.TEXT_SECONDARY);
 
-        cbEntries = new JComboBox<>(new String[]{"5", "10", "25", "50"});
+        cbEntries = new JComboBox<>(new String[] { "5", "10", "25", "50" });
         cbEntries.setBackground(Theme.BG);
         cbEntries.setForeground(Theme.TEXT_PRIMARY);
         cbEntries.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -92,11 +87,8 @@ public class ActivityTable extends RoundedPanel {
         txtSearch.setBackground(Theme.BG);
         txtSearch.setForeground(Theme.TEXT_PRIMARY);
         txtSearch.setCaretColor(Theme.TEXT_PRIMARY);
-        txtSearch.setBorder(BorderFactory.createCompoundBorder(
-                BorderFactory.createLineBorder(Theme.BORDER),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        ));
-
+        txtSearch.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Theme.BORDER),
+                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) {
                 search();
@@ -118,15 +110,13 @@ public class ActivityTable extends RoundedPanel {
 
         rightControl.add(lblSearch);
         rightControl.add(txtSearch);
-
         controlRow.add(leftControl, BorderLayout.WEST);
         controlRow.add(rightControl, BorderLayout.EAST);
-
         topHeader.add(lblTitle, BorderLayout.NORTH);
         topHeader.add(controlRow, BorderLayout.CENTER);
         add(topHeader, BorderLayout.NORTH);
 
-        // --- Grid Tabel Dinamis Sesuai Jumlah Header ---
+        // --- Grid Tabel sesuai jumlah Header ---
         tableContentPanel = new JPanel();
         tableContentPanel.setLayout(new BoxLayout(tableContentPanel, BoxLayout.Y_AXIS));
         tableContentPanel.setOpaque(false);
@@ -142,10 +132,9 @@ public class ActivityTable extends RoundedPanel {
             l.setForeground(Theme.TEXT_SECONDARY);
             l.setFont(new Font("SansSerif", Font.PLAIN, 12));
             if (i < cols - 1) {
-                l.setBorder(BorderFactory.createCompoundBorder(
-                        BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER),
-                        BorderFactory.createEmptyBorder(10, 5, 10, 5)
-                ));
+                l.setBorder(
+                        BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER),
+                                BorderFactory.createEmptyBorder(10, 5, 10, 5)));
             } else {
                 l.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
             }
@@ -156,15 +145,12 @@ public class ActivityTable extends RoundedPanel {
         tableScroll.setOpaque(false);
         tableScroll.getViewport().setOpaque(false);
         tableScroll.setBorder(null);
-
         tableScroll.setColumnHeaderView(headerRowPanel);
         tableScroll.getColumnHeader().setOpaque(false);
         tableScroll.getVerticalScrollBar().setUnitIncrement(16);
         tableScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-
         tableScroll.setPreferredSize(new Dimension(0, 200));
         tableScroll.setMinimumSize(new Dimension(0, 200));
-
         add(tableScroll, BorderLayout.CENTER);
 
         // --- Pagination ---
@@ -218,7 +204,7 @@ public class ActivityTable extends RoundedPanel {
         String keyword = txtSearch.getText().trim();
         tableContentPanel.removeAll();
 
-        // 1. Dapatkan Total Data dari Provider
+        // Get Total Data dari Provider
         totalData = dataProvider.getTotalRowCount(keyword);
 
         int totalPages = (int) Math.ceil((double) totalData / entriesPerPage);
@@ -234,10 +220,10 @@ public class ActivityTable extends RoundedPanel {
 
         int offset = (currentPage - 1) * entriesPerPage;
 
-        // 2. Dapatkan Baris Data Matang dari Provider
+        // Get Baris Data Matang dari Provider
         List<String[]> pageData = dataProvider.getPageData(entriesPerPage, offset, keyword);
 
-        // 3. Render Tabel Dinamis
+        // Render Tabel
         if (pageData.isEmpty()) {
             JLabel lblEmpty = new JLabel("Data tidak ditemukan");
             lblEmpty.setForeground(Theme.TEXT_SECONDARY);
@@ -253,16 +239,12 @@ public class ActivityTable extends RoundedPanel {
         }
 
         tableContentPanel.add(Box.createVerticalGlue());
-
         int startItem = (totalData == 0) ? 0 : offset + 1;
         int endItem = Math.min(offset + entriesPerPage, totalData);
-
         lblPageInfo.setText(String.format("Menampilkan %d sampai %d dari %d data", startItem, endItem, totalData));
         btnPageNum.setText(String.valueOf(currentPage));
-
         btnPrev.setEnabled(currentPage > 1);
         btnNext.setEnabled(currentPage < totalPages);
-
         tableContentPanel.revalidate();
         tableContentPanel.repaint();
     }
@@ -304,15 +286,15 @@ public class ActivityTable extends RoundedPanel {
                 lblBadge.setForeground(badgeColor);
                 lblBadge.setFont(new Font("SansSerif", Font.BOLD, 11));
                 lblBadge.setBorder(new EmptyBorder(4, 10, 4, 10));
-
-                RoundedPanel pillPanel = new RoundedPanel(12, new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 40));
+                RoundedPanel pillPanel = new RoundedPanel(12,
+                        new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 40));
                 pillPanel.setLayout(new BorderLayout());
                 pillPanel.add(lblBadge, BorderLayout.CENTER);
-
                 badgeWrapper.add(pillPanel);
                 row.add(badgeWrapper);
             } else {
-                row.add(createTableCell(cellData, (i == 1) ? Theme.TEXT_SECONDARY : Theme.TEXT_PRIMARY, addRightBorder));
+                row.add(createTableCell(cellData, (i == 1) ? Theme.TEXT_SECONDARY : Theme.TEXT_PRIMARY,
+                        addRightBorder));
             }
         }
         return row;
@@ -324,10 +306,8 @@ public class ActivityTable extends RoundedPanel {
         l.setFont(new Font("SansSerif", Font.PLAIN, 13));
 
         if (addRightBorder) {
-            l.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER),
-                    BorderFactory.createEmptyBorder(10, 5, 10, 5)
-            ));
+            l.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER),
+                    BorderFactory.createEmptyBorder(10, 5, 10, 5)));
         } else {
             l.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
         }
