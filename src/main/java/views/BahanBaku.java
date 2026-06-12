@@ -72,9 +72,26 @@ public class BahanBaku extends JPanel {
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Theme.BG);
-        buttonPanel.add(createHeaderButton("Export PDF", false));
-        buttonPanel.add(createHeaderButton("+ Tambah Data", true));
+        RoundedPanel btnExport = createHeaderButton("Export PDF", false);
+        RoundedPanel btnAdd = createHeaderButton("+ Tambah Data", true);
+        btnAdd.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                // Tampilkan Modal
+                Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(BahanBaku.this);
+                ModalTambahBahan modal = new ModalTambahBahan(parentFrame);
+                modal.setVisible(true);
+                if (modal.isSaved()) {
+                    removeAll();
+                    add(createMainContent(), BorderLayout.CENTER);
+                    revalidate();
+                    repaint();
+                }
+            }
+        });
 
+        buttonPanel.add(btnExport);
+        buttonPanel.add(btnAdd);
         header.add(titlePanel, BorderLayout.WEST);
         header.add(buttonPanel, BorderLayout.EAST);
         return header;

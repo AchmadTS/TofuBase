@@ -126,4 +126,73 @@ public class BahanBakuDAO {
         }
         return data;
     }
+    
+    public Map<Integer, String> getSupplierList() {
+        Map<Integer, String> suppliers = new HashMap<>();
+        String query = "SELECT id_supplier, nama FROM supplier ORDER BY nama ASC";
+        try {
+            Connection conn = DatabaseConfig.getKoneksi();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+            while (rs.next()) {
+                suppliers.put(rs.getInt("id_supplier"), rs.getString("nama"));
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return suppliers;
+    }
+
+    public List<String> getSatuanList() {
+        List<String> satuanList = new ArrayList<>(java.util.Arrays.asList(
+                "kg", "liter", "pcs", "gram", "ml", "bungkus"
+        ));
+        String query = "SELECT DISTINCT satuan FROM bahan_baku WHERE satuan IS NOT NULL AND satuan != ''";
+        try {
+            Connection conn = DatabaseConfig.getKoneksi();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(query);
+            while (rs.next()) {
+                String s = rs.getString("satuan").toLowerCase();
+                if (!satuanList.contains(s)) {
+                    satuanList.add(s);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        java.util.Collections.sort(satuanList);
+        return satuanList;
+    }
+
+    public boolean simpanAtauUpdateBahan(String nama, int idSupplier, String satuan, double qty, double minStok, double hargaBeli) {
+        String normalizedInput = nama.replaceAll("\\s+", "").toLowerCase();
+        String checkQuery = "SELECT id_bahan, stok FROM bahan_baku WHERE LOWER(REPLACE(nama, ' ', '')) = '" + normalizedInput + "'";
+
+        try {
+            Connection conn = DatabaseConfig.getKoneksi();
+            Statement stmt = conn.createStatement();
+            ResultSet rs = stmt.executeQuery(checkQuery);
+
+            if (rs.next()) {
+                int idBahan = rs.getInt("id_bahan");
+                String updateQuery = "UPDATE bahan_baku SET "
+                        + "stok = stok + " + qty + ", "
+                        + "min_stok = " + minStok + ", "
+                        + "harga_beli = " + hargaBeli + ", "
+                        + "satuan = '" + satuan + "', "
+                        + "id_supplier = " + idSupplier + " "
+                        + "WHERE id_bahan = " + idBahan;
+                stmt.executeUpdate(updateQuery);
+            } else {
+                String insertQuery = "INSERT INTO bahan_baku (nama, id_supplier, satuan, stok, min_stok, harga_beli) "
+                        + "VALUES ('" + nama + "', " + idSupplier + ", '" + satuan + "', " + qty + ", " + minStok + ", " + hargaBeli + ")";
+                stmt.executeUpdate(insertQuery);
+            }
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

@@ -1,6 +1,6 @@
 package components;
 
-import views.Login;
+import views.LoginView;
 import utils.Theme;
 
 import javax.swing.*;
@@ -128,7 +128,7 @@ public class Sidebar extends JPanel {
                     if (window != null) {
                         window.dispose();
                     }
-                    new Login().setVisible(true);
+                    new LoginView().setVisible(true);
                 }
             }
         });

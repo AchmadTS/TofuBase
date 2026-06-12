@@ -6,7 +6,6 @@ import components.RoundedPanel;
 import dao.DashboardDAO;
 import utils.FormatUtil;
 import utils.Theme;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -253,6 +252,8 @@ public class Dashboard extends JPanel {
         statusScroll.setBorder(null);
         statusScroll.getVerticalScrollBar().setUnitIncrement(16);
         statusScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        statusScroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
+        statusScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
         statusPanel.add(statusScroll, BorderLayout.CENTER);
 
         middlePanel.add(chartPanel, BorderLayout.CENTER);
