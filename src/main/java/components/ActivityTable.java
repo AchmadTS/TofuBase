@@ -6,11 +6,11 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.util.List;
+import java.util.Locale;
 import utils.Theme;
 
 public class ActivityTable extends RoundedPanel {
     public interface DataProvider {
-
         int getTotalRowCount(String keyword);
 
         List<String[]> getPageData(int limit, int offset, String keyword);
@@ -196,7 +196,6 @@ public class ActivityTable extends RoundedPanel {
 
         paginationRow.add(lblPageInfo, BorderLayout.WEST);
         paginationRow.add(btnPanel, BorderLayout.EAST);
-
         add(paginationRow, BorderLayout.SOUTH);
     }
 
@@ -241,7 +240,10 @@ public class ActivityTable extends RoundedPanel {
         tableContentPanel.add(Box.createVerticalGlue());
         int startItem = (totalData == 0) ? 0 : offset + 1;
         int endItem = Math.min(offset + entriesPerPage, totalData);
-        lblPageInfo.setText(String.format("Menampilkan %d sampai %d dari %d data", startItem, endItem, totalData));
+        java.text.NumberFormat nf = java.text.NumberFormat.getInstance(Locale.forLanguageTag("id-ID"));
+        String info = String.format("Menampilkan %s sampai %s dari %s data", nf.format(startItem), nf.format(endItem),
+                nf.format(totalData));
+        lblPageInfo.setText(info);
         btnPageNum.setText(String.valueOf(currentPage));
         btnPrev.setEnabled(currentPage > 1);
         btnNext.setEnabled(currentPage < totalPages);

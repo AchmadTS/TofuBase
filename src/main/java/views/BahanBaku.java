@@ -3,7 +3,6 @@ package views;
 import components.ModernScrollBarUI;
 import components.RoundedPanel;
 import utils.Theme;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
@@ -93,11 +92,13 @@ public class BahanBaku extends JPanel {
                 ResultSet rsAset = stmt.executeQuery("SELECT SUM(stok * harga_beli) AS total FROM bahan_baku");
                 String asetStr = "0";
                 if (rsAset.next() && rsAset.getString("total") != null) {
-                    asetStr = String.format(Locale.forLanguageTag("id-ID"), "%.1f", rsAset.getDouble("total") / 1000000.0);
+                    asetStr = String.format(Locale.forLanguageTag("id-ID"), "%.1f",
+                            rsAset.getDouble("total") / 1000000.0);
                 }
 
                 // Stok Kedelai
-                ResultSet rsKed = stmt.executeQuery("SELECT SUM(stok) AS total_stok, MAX(min_stok) AS batas_stok FROM bahan_baku WHERE nama LIKE '%Kedelai%'");
+                ResultSet rsKed = stmt.executeQuery(
+                        "SELECT SUM(stok) AS total_stok, MAX(min_stok) AS batas_stok FROM bahan_baku WHERE nama LIKE '%Kedelai%'");
                 String kedelaiStr = "0";
                 String statusKedTxt = "Tidak ada data";
                 Color statusKedColor = Theme.TEXT_SECONDARY;
@@ -147,80 +148,85 @@ public class BahanBaku extends JPanel {
         }).start();
 
         // --- TABEL ACTIVITY ---
-        String[] bahanHeaders = {"ID", "Nama Bahan", "Stok Tersedia", "Satuan", "Rata-rata harga Beli", "Min. Stok", "Status Stok"};
-        components.ActivityTable tableBahan = new components.ActivityTable("Daftar Stok Bahan Baku", bahanHeaders, 6, new components.ActivityTable.DataProvider() {
+        String[] bahanHeaders = { "ID", "Nama Bahan", "Stok Tersedia", "Satuan", "Rata-rata harga Beli", "Min. Stok",
+                "Status Stok" };
+        components.ActivityTable tableBahan = new components.ActivityTable("Daftar Stok Bahan Baku", bahanHeaders, 6,
+                new components.ActivityTable.DataProvider() {
 
-            private String buildWhereClause(String keyword) {
-                if (keyword.isEmpty()) {
-                    return "";
-                }
-                return "WHERE nama LIKE '" + keyword + "%' OR id_bahan LIKE '" + keyword + "%' ";
-            }
-
-            @Override
-            public int getTotalRowCount(String keyword) {
-                try {
-                    Connection conn = utils.DatabaseConfig.getKoneksi();
-                    Statement stmt = conn.createStatement();
-                    String query = "SELECT COUNT(*) AS total FROM (SELECT 1 FROM bahan_baku " + buildWhereClause(keyword) + " GROUP BY nama, satuan) AS sub";
-                    ResultSet rs = stmt.executeQuery(query);
-                    if (rs.next()) {
-                        return rs.getInt("total");
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                return 0;
-            }
-
-            @Override
-            public List<String[]> getPageData(int limit, int offset, String keyword) {
-                List<String[]> data = new ArrayList<>();
-                try {
-                    Connection conn = utils.DatabaseConfig.getKoneksi();
-                    Statement stmt = conn.createStatement();
-                    String query = "SELECT MIN(b.id_bahan) AS id_bahan, b.nama, b.satuan, "
-                            + "SUM(b.stok) AS total_stok, "
-                            + "AVG(b.harga_beli) AS rata_harga, "
-                            + "MAX(b.min_stok) AS batas_stok "
-                            + "FROM ("
-                            + "   SELECT nama, satuan FROM bahan_baku "
-                            + buildWhereClause(keyword)
-                            + "   GROUP BY nama, satuan "
-                            + "   ORDER BY nama ASC LIMIT " + limit + " OFFSET " + offset
-                            + ") AS filter_b "
-                            + "JOIN bahan_baku b ON b.nama = filter_b.nama AND b.satuan = filter_b.satuan "
-                            + "GROUP BY b.nama, b.satuan "
-                            + "ORDER BY b.nama ASC";
-                    ResultSet rs = stmt.executeQuery(query);
-                    java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
-                    while (rs.next()) {
-                        String id = "BHN-" + rs.getInt("id_bahan");
-                        String nama = rs.getString("nama");
-                        String satuan = rs.getString("satuan");
-
-                        double stok = rs.getDouble("total_stok");
-                        double hargaBeliAvg = rs.getDouble("rata_harga");
-                        double minStok = rs.getDouble("batas_stok");
-
-                        String harga = "Rp " + df.format(hargaBeliAvg);
-                        String stokStr = (stok == (long) stok) ? String.valueOf((long) stok) : String.valueOf(stok);
-                        String minStokStr = (minStok == (long) minStok) ? String.valueOf((long) minStok) : String.valueOf(minStok);
-                        String status = "Aman";
-                        if (stok <= minStok / 2) {
-                            status = "Kritis";
-                        } else if (stok <= minStok) {
-                            status = "Rendah";
+                    private String buildWhereClause(String keyword) {
+                        if (keyword.isEmpty()) {
+                            return "";
                         }
-
-                        data.add(new String[]{id, nama, stokStr, satuan, harga, minStokStr, status});
+                        return "WHERE nama LIKE '" + keyword + "%' OR id_bahan LIKE '" + keyword + "%' ";
                     }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                return data;
-            }
-        });
+
+                    @Override
+                    public int getTotalRowCount(String keyword) {
+                        try {
+                            Connection conn = utils.DatabaseConfig.getKoneksi();
+                            Statement stmt = conn.createStatement();
+                            String query = "SELECT COUNT(*) AS total FROM (SELECT 1 FROM bahan_baku "
+                                    + buildWhereClause(keyword) + " GROUP BY nama, satuan) AS sub";
+                            ResultSet rs = stmt.executeQuery(query);
+                            if (rs.next()) {
+                                return rs.getInt("total");
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        return 0;
+                    }
+
+                    @Override
+                    public List<String[]> getPageData(int limit, int offset, String keyword) {
+                        List<String[]> data = new ArrayList<>();
+                        try {
+                            Connection conn = utils.DatabaseConfig.getKoneksi();
+                            Statement stmt = conn.createStatement();
+                            String query = "SELECT MIN(b.id_bahan) AS id_bahan, b.nama, b.satuan, "
+                                    + "SUM(b.stok) AS total_stok, "
+                                    + "AVG(b.harga_beli) AS rata_harga, "
+                                    + "MAX(b.min_stok) AS batas_stok "
+                                    + "FROM ("
+                                    + "   SELECT nama, satuan FROM bahan_baku "
+                                    + buildWhereClause(keyword)
+                                    + "   GROUP BY nama, satuan "
+                                    + "   ORDER BY nama ASC LIMIT " + limit + " OFFSET " + offset
+                                    + ") AS filter_b "
+                                    + "JOIN bahan_baku b ON b.nama = filter_b.nama AND b.satuan = filter_b.satuan "
+                                    + "GROUP BY b.nama, b.satuan "
+                                    + "ORDER BY b.nama ASC";
+                            ResultSet rs = stmt.executeQuery(query);
+                            java.text.DecimalFormat df = new java.text.DecimalFormat("#,###");
+                            while (rs.next()) {
+                                String id = "BHN-" + rs.getInt("id_bahan");
+                                String nama = rs.getString("nama");
+                                String satuan = rs.getString("satuan");
+
+                                double stok = rs.getDouble("total_stok");
+                                double hargaBeliAvg = rs.getDouble("rata_harga");
+                                double minStok = rs.getDouble("batas_stok");
+
+                                String harga = "Rp " + df.format(hargaBeliAvg);
+                                String stokStr = (stok == (long) stok) ? String.valueOf((long) stok)
+                                        : String.valueOf(stok);
+                                String minStokStr = (minStok == (long) minStok) ? String.valueOf((long) minStok)
+                                        : String.valueOf(minStok);
+                                String status = "Aman";
+                                if (stok <= minStok / 2) {
+                                    status = "Kritis";
+                                } else if (stok <= minStok) {
+                                    status = "Rendah";
+                                }
+
+                                data.add(new String[] { id, nama, stokStr, satuan, harga, minStokStr, status });
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                        return data;
+                    }
+                });
 
         container.add(topCardsPanel);
         container.add(Box.createVerticalStrut(20));
@@ -239,9 +245,13 @@ public class BahanBaku extends JPanel {
     }
 
     private RoundedPanel createHeaderButton(String text, boolean isPrimary) {
-        RoundedPanel panel = new RoundedPanel(10, isPrimary ? Theme.BLUE_ACCENT : Theme.BG);
+        Color defaultBg = isPrimary ? Theme.BLUE_ACCENT : Theme.BG;
+        Color hoverBg = isPrimary ? Theme.BLUE_ACCENT.darker() : Theme.CARD;
+        Color borderColor = isPrimary ? Theme.BLUE_ACCENT : Theme.BORDER;
+
+        RoundedPanel panel = new RoundedPanel(10, defaultBg);
         panel.setLayout(new BorderLayout());
-        panel.setBorder(BorderFactory.createLineBorder(isPrimary ? Theme.BLUE_ACCENT : Theme.BORDER, 1));
+        panel.setBorder(BorderFactory.createLineBorder(borderColor, 1));
         panel.setPreferredSize(new Dimension(130, 35));
         panel.setCursor(new Cursor(Cursor.HAND_CURSOR));
 
@@ -249,6 +259,25 @@ public class BahanBaku extends JPanel {
         label.setForeground(isPrimary ? Color.WHITE : Theme.TEXT_PRIMARY);
         label.setFont(new Font("SansSerif", Font.BOLD, 12));
         panel.add(label, BorderLayout.CENTER);
+        panel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mouseEntered(java.awt.event.MouseEvent e) {
+                panel.setBackground(hoverBg);
+                if (!isPrimary) {
+                    panel.setBorder(BorderFactory.createLineBorder(Theme.TEXT_SECONDARY, 1));
+                }
+                panel.repaint();
+            }
+
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e) {
+                panel.setBackground(defaultBg);
+                if (!isPrimary) {
+                    panel.setBorder(BorderFactory.createLineBorder(borderColor, 1));
+                }
+                panel.repaint();
+            }
+        });
 
         return panel;
     }

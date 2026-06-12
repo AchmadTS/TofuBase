@@ -3,24 +3,26 @@ package views;
 import components.ActivityTable;
 import components.ModernScrollBarUI;
 import components.RoundedPanel;
+import dao.DashboardDAO;
+import utils.FormatUtil;
+import utils.Theme;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.sql.Connection;
-import java.sql.ResultSet;
-import java.sql.Statement;
-import java.text.DecimalFormat;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import utils.Theme;
+import java.util.Map;
 
 public class Dashboard extends JPanel {
+
+    private final DashboardDAO dashboardDAO = new DashboardDAO();
 
     public Dashboard(String userName, String userRole) {
         setLayout(new BorderLayout());
@@ -31,8 +33,31 @@ public class Dashboard extends JPanel {
     private JPanel createMainContent() {
         JPanel mainContent = new JPanel(new BorderLayout());
         mainContent.setBackground(Theme.BG);
+        mainContent.add(buildHeader(), BorderLayout.NORTH);
 
-        // HEADER
+        JPanel container = new JPanel();
+        container.setLayout(new BoxLayout(container, BoxLayout.Y_AXIS));
+        container.setBackground(Theme.BG);
+        container.setBorder(new EmptyBorder(10, 30, 30, 30));
+
+        container.add(buildTopCards());
+        container.add(Box.createVerticalStrut(20));
+        container.add(buildMiddlePanel());
+        container.add(Box.createVerticalStrut(20));
+        container.add(buildActivityTable());
+
+        JScrollPane mainScrollPane = new JScrollPane(container);
+        mainScrollPane.setBorder(null);
+        mainScrollPane.getVerticalScrollBar().setUnitIncrement(16);
+        mainScrollPane.getViewport().setBackground(Theme.BG);
+        mainScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+        mainScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+
+        mainContent.add(mainScrollPane, BorderLayout.CENTER);
+        return mainContent;
+    }
+
+    private JPanel buildHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(Theme.BG);
         header.setBorder(new EmptyBorder(20, 30, 10, 30));
@@ -50,22 +75,17 @@ public class Dashboard extends JPanel {
         titlePanel.add(headerTitle);
         titlePanel.add(headerDate);
 
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Theme.BG);
-        JButton btnExport = new JButton("Export PDF");
-        JButton btnAdd = new JButton("+ Tambah Data");
-        buttonPanel.add(btnExport);
-        buttonPanel.add(btnAdd);
+        buttonPanel.add(createHeaderButton("Export PDF", false));
+        buttonPanel.add(createHeaderButton("+ Tambah Data", true));
 
         header.add(titlePanel, BorderLayout.WEST);
         header.add(buttonPanel, BorderLayout.EAST);
+        return header;
+    }
 
-        // KONTEN DASHBOARD
-        JPanel dashboardContainer = new JPanel();
-        dashboardContainer.setLayout(new BoxLayout(dashboardContainer, BoxLayout.Y_AXIS));
-        dashboardContainer.setBackground(Theme.BG);
-        dashboardContainer.setBorder(new EmptyBorder(10, 30, 30, 30));
-
+    private JPanel buildTopCards() {
         JPanel topCardsPanel = new JPanel(new GridLayout(1, 4, 20, 0));
         topCardsPanel.setBackground(Theme.BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
@@ -75,82 +95,43 @@ public class Dashboard extends JPanel {
         JLabel lblPendapatan = createAnimatedLabel();
         JLabel lblTahuSiapJual = createAnimatedLabel();
 
-        topCardsPanel
-                .add(createStatCard("PRODUKSI HARI INI", lblProdHariIni, "potong", "Terbaru hari ini", Theme.GREEN));
+        topCardsPanel.add(createStatCard("PRODUKSI HARI INI", lblProdHariIni, "potong", "Terbaru hari ini", Theme.GREEN));
         topCardsPanel.add(createStatCard("STOK KEDELAI", lblStokKedelai, "kg", "Sesuai gudang", Theme.WARNING));
         topCardsPanel.add(createStatCard("PENDAPATAN", lblPendapatan, "jt", "Bulan ini", Theme.GREEN));
-        topCardsPanel.add(
-                createStatCard("TAHU SIAP JUAL", lblTahuSiapJual, "potong", "Total semua jenis", Theme.TEXT_SECONDARY));
+        topCardsPanel.add(createStatCard("TAHU SIAP JUAL", lblTahuSiapJual, "potong", "Total semua jenis", Theme.TEXT_SECONDARY));
 
         new Thread(() -> {
-            try {
-                Connection conn = utils.DatabaseConfig.getKoneksi();
-                Statement stmt = conn.createStatement();
-
-                // Produksi Hari Ini
-                ResultSet rsProd = stmt
-                        .executeQuery("SELECT SUM(hasil_tahu) AS total FROM produksi WHERE tanggal = CURDATE()");
-                String prodHariIni = (rsProd.next() && rsProd.getString("total") != null) ? rsProd.getString("total")
-                        : "0";
-
-                // Stok Kedelai
-                ResultSet rsKed = stmt
-                        .executeQuery("SELECT SUM(stok) AS total_stok FROM bahan_baku WHERE nama LIKE '%Kedelai%'");
-                String stokKedelai = (rsKed.next() && rsKed.getString("total_stok") != null)
-                        ? rsKed.getString("total_stok")
-                        : "0";
-
-                // Pendapatan
-                String qPendapatan = "SELECT SUM(total) AS total FROM penjualan WHERE tanggal >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND tanggal <= LAST_DAY(CURDATE())";
-                ResultSet rsPend = stmt.executeQuery(qPendapatan);
-                String pendapatan = "0";
-                if (rsPend.next() && rsPend.getString("total") != null) {
-                    pendapatan = String.format(Locale.forLanguageTag("id-ID"), "%.1f",
-                            rsPend.getDouble("total") / 1000000.0);
-                }
-
-                // Tahu Siap Jual
-                ResultSet rsTahu = stmt.executeQuery("SELECT SUM(stok) AS total FROM produk");
-                String tahuSiapJual = (rsTahu.next() && rsTahu.getString("total") != null) ? rsTahu.getString("total")
-                        : "0";
-
-                final String fProd = prodHariIni;
-                final String fStok = stokKedelai;
-                final String fPend = "Rp " + pendapatan;
-                final String fTahu = tahuSiapJual;
-
-                SwingUtilities.invokeLater(() -> {
-                    lblProdHariIni.setText(fProd);
-                    lblStokKedelai.setText(fStok);
-                    lblPendapatan.setText(fPend);
-                    lblTahuSiapJual.setText(fTahu);
-                });
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+            Map<String, String> data = dashboardDAO.getTopCardsData();
+            SwingUtilities.invokeLater(() -> {
+                lblProdHariIni.setText(data.getOrDefault("produksi", "0"));
+                lblStokKedelai.setText(data.getOrDefault("stok", "0"));
+                lblPendapatan.setText(data.getOrDefault("pendapatan", "Rp 0"));
+                lblTahuSiapJual.setText(data.getOrDefault("tahu", "0"));
+            });
         }).start();
 
-        // GRAFIK & STATUS STOK
+        return topCardsPanel;
+    }
+
+    private JPanel buildMiddlePanel() {
         JPanel middlePanel = new JPanel(new BorderLayout(20, 0));
         middlePanel.setBackground(Theme.BG);
         middlePanel.setMinimumSize(new Dimension(800, 300));
         middlePanel.setPreferredSize(new Dimension(800, 300));
         middlePanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 300));
 
-        // --- Grafik Panel ---
         RoundedPanel chartPanel = new RoundedPanel(20, Theme.CARD);
         chartPanel.setLayout(new BorderLayout(0, 15));
         chartPanel.setBorder(new EmptyBorder(20, 20, 20, 20));
 
         JPanel chartHeader = new JPanel(new BorderLayout());
         chartHeader.setOpaque(false);
-        JLabel chartTitle = new JLabel("Produksi 7 Hari Terakhir");
+        JLabel chartTitle = new JLabel("Produksi Hari Terakhir");
         chartTitle.setForeground(Theme.TEXT_PRIMARY);
         chartTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
         chartHeader.add(chartTitle, BorderLayout.WEST);
 
-        JComboBox<String> cbTimeframe = new JComboBox<>(new String[] { "1W", "1M", "3M", "ALL" });
+        JComboBox<String> cbTimeframe = new JComboBox<>(new String[]{"1W", "1M", "3M", "ALL"});
         cbTimeframe.setBackground(Theme.BG);
         cbTimeframe.setForeground(Theme.TEXT_PRIMARY);
         cbTimeframe.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -173,89 +154,55 @@ public class Dashboard extends JPanel {
         chartFooter.add(lblAvgSummary, BorderLayout.EAST);
         chartPanel.add(chartFooter, BorderLayout.SOUTH);
 
-        // --- DATA GRAFIK ---
         final List<String> chartLabels = new ArrayList<>();
         final List<Integer> chartValues = new ArrayList<>();
         JPanel mockChart = createMockChartPanel(chartLabels, chartValues);
 
-        Runnable fetchChartData = () -> {
+        Runnable triggerChartFetch = () -> {
+            String selected = (String) cbTimeframe.getSelectedItem();
+            List<Object[]> dbData = dashboardDAO.getChartData(selected);
+
             chartLabels.clear();
             chartValues.clear();
-            String selected = (String) cbTimeframe.getSelectedItem();
-            String query = "";
-            String timeText = "";
-            int divisor = 1;
-            String cTitle = "";
-
-            if ("1W".equals(selected)) {
-                cTitle = "Produksi 7 Hari Terakhir";
-                query = "SELECT DATE_FORMAT(tanggal, '%d %b') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) GROUP BY tanggal ORDER BY tanggal ASC";
-                timeText = "minggu ini";
-                divisor = 7;
-            } else if ("1M".equals(selected)) {
-                cTitle = "Produksi 30 Hari Terakhir";
-                query = "SELECT DATE_FORMAT(tanggal, '%d %b') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) GROUP BY tanggal ORDER BY tanggal ASC";
-                timeText = "bulan ini";
-                divisor = 30;
-            } else if ("3M".equals(selected)) {
-                cTitle = "Produksi 3 Bulan Terakhir";
-                query = "SELECT DATE_FORMAT(tanggal, '%b %Y') as label, SUM(hasil_tahu) as total FROM produksi WHERE tanggal >= DATE_SUB(CURDATE(), INTERVAL 3 MONTH) GROUP BY YEAR(tanggal), MONTH(tanggal) ORDER BY YEAR(tanggal), MONTH(tanggal) ASC";
-                timeText = "3 bulan terakhir";
-                divisor = 90;
-            } else {
-                cTitle = "Total Produksi Keseluruhan";
-                query = "SELECT DATE_FORMAT(tanggal, '%b %Y') as label, SUM(hasil_tahu) as total FROM produksi GROUP BY YEAR(tanggal), MONTH(tanggal) ORDER BY YEAR(tanggal), MONTH(tanggal) ASC";
-                timeText = "keseluruhan";
-            }
-
             int totalSum = 0;
-            try {
-                Connection conn = utils.DatabaseConfig.getKoneksi();
-                Statement stmt = conn.createStatement();
-                ResultSet rsChart = stmt.executeQuery(query);
-                while (rsChart.next()) {
-                    chartLabels.add(rsChart.getString("label"));
-                    int total = rsChart.getInt("total");
-                    chartValues.add(total);
-                    totalSum += total;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+            for (Object[] row : dbData) {
+                chartLabels.add((String) row[0]);
+                chartValues.add((Integer) row[1]);
+                totalSum += (Integer) row[1];
             }
 
             if (chartValues.isEmpty()) {
                 chartLabels.add("-");
                 chartValues.add(0);
-            } else if ("ALL".equals(selected)) {
-                divisor = Math.max(1, chartValues.size() * 30);
             }
 
-            final int avgPerDay = (divisor > 0) ? (totalSum / divisor) : 0;
-            final String finalTotalText = "Total " + timeText + ": "
-                    + String.format(Locale.forLanguageTag("id-ID"), "%,d", totalSum) + " potong";
-            final String finalAvgText = "Rata-rata: " + String.format(Locale.forLanguageTag("id-ID"), "%,d", avgPerDay)
-                    + " potong/hari";
-            final String finalTitle = cTitle;
+            int divisor = "1W".equals(selected) ? 7 : ("1M".equals(selected) ? 30 : ("3M".equals(selected) ? 90 : Math.max(1, chartValues.size() * 30)));
+            String timeText = "1W".equals(selected) ? "minggu ini" : ("1M".equals(selected) ? "bulan ini" : ("3M".equals(selected) ? "3 bulan terakhir" : "keseluruhan"));
+            String cTitle = "1W".equals(selected) ? "Produksi 7 Hari Terakhir" : ("1M".equals(selected) ? "Produksi 30 Hari Terakhir" : ("3M".equals(selected) ? "Produksi 3 Bulan Terakhir" : "Total Produksi Keseluruhan"));
+
+            int avgPerDay = totalSum / divisor;
+            String fTotal = "Total " + timeText + ": " + FormatUtil.formatAngka(totalSum) + " potong";
+            String fAvg = "Rata-rata: " + FormatUtil.formatAngka(avgPerDay) + " potong/hari";
 
             SwingUtilities.invokeLater(() -> {
-                chartTitle.setText(finalTitle);
-                lblTotalSummary.setText(finalTotalText);
-                lblAvgSummary.setText(finalAvgText);
+                chartTitle.setText(cTitle);
+                lblTotalSummary.setText(fTotal);
+                lblAvgSummary.setText(fAvg);
                 mockChart.repaint();
             });
         };
 
-        new Thread(fetchChartData).start();
+        new Thread(triggerChartFetch).start();
         cbTimeframe.addActionListener(e -> {
             mockChart.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
             lblTotalSummary.setText("Menghitung...");
             lblAvgSummary.setText("Menghitung...");
-            new Thread(fetchChartData).start();
+            new Thread(triggerChartFetch).start();
         });
 
         chartPanel.add(mockChart, BorderLayout.CENTER);
 
-        // --- STATUS STOK ---
+        // Status Stok
         RoundedPanel statusPanel = new RoundedPanel(20, Theme.CARD);
         statusPanel.setPreferredSize(new Dimension(320, 0));
         statusPanel.setLayout(new BorderLayout());
@@ -277,54 +224,27 @@ public class Dashboard extends JPanel {
         statusListPanel.add(lblLoadingStatus);
 
         new Thread(() -> {
-            try {
-                Connection conn = utils.DatabaseConfig.getKoneksi();
-                Statement stmt = conn.createStatement();
-                String query = "SELECT nama, satuan, MAX(min_stok) as batas_stok, SUM(stok) as total_stok FROM bahan_baku GROUP BY nama, satuan ORDER BY nama ASC";
-                ResultSet rsBahan = stmt.executeQuery(query);
-                DecimalFormat df = new DecimalFormat("#.##");
-
-                List<JPanel> rows = new ArrayList<>();
-                while (rsBahan.next()) {
-                    String nama = rsBahan.getString("nama");
-                    String satuan = rsBahan.getString("satuan");
-                    double minStok = rsBahan.getDouble("batas_stok");
-                    double stok = rsBahan.getDouble("total_stok");
-
-                    String sub = "Min. stok: " + df.format(minStok) + " " + satuan;
-                    String val = df.format(stok) + " " + satuan;
-                    String badgeText;
-                    Color badgeColor;
-
-                    if (stok <= minStok / 2) {
-                        badgeText = "Kritis";
-                        badgeColor = Theme.RED;
-                    } else if (stok <= minStok) {
-                        badgeText = "Rendah";
-                        badgeColor = Theme.WARNING;
-                    } else {
-                        badgeText = "Aman";
-                        badgeColor = Theme.GREEN;
-                    }
-                    rows.add(createStatusRow(nama, sub, val, badgeText, badgeColor));
-                }
-
-                SwingUtilities.invokeLater(() -> {
-                    statusListPanel.removeAll();
-                    statusListPanel.add(Box.createVerticalStrut(20));
-                    for (JPanel row : rows) {
-                        statusListPanel.add(row);
-                        statusListPanel.add(Box.createVerticalStrut(15));
-                    }
-                    statusListPanel.revalidate();
-                    statusListPanel.repaint();
-                });
-
-            } catch (Exception e) {
-                SwingUtilities.invokeLater(() -> {
-                    lblLoadingStatus.setText("Gagal memuat data.");
-                });
+            List<String[]> dbRows = dashboardDAO.getStatusStokData();
+            List<JPanel> uiRows = new ArrayList<>();
+            for (String[] r : dbRows) {
+                String nama = r[0], satuan = r[1];
+                double minStok = Double.parseDouble(r[2]), stok = Double.parseDouble(r[3]);
+                String sub = "Min. stok: " + FormatUtil.formatAngka(minStok) + " " + satuan;
+                String val = FormatUtil.formatAngka(stok) + " " + satuan;
+                String bText = stok <= minStok / 2 ? "Kritis" : (stok <= minStok ? "Rendah" : "Aman");
+                Color bColor = stok <= minStok / 2 ? Theme.RED : (stok <= minStok ? Theme.WARNING : Theme.GREEN);
+                uiRows.add(createStatusRow(nama, sub, val, bText, bColor));
             }
+            SwingUtilities.invokeLater(() -> {
+                statusListPanel.removeAll();
+                statusListPanel.add(Box.createVerticalStrut(20));
+                for (JPanel row : uiRows) {
+                    statusListPanel.add(row);
+                    statusListPanel.add(Box.createVerticalStrut(15));
+                }
+                statusListPanel.revalidate();
+                statusListPanel.repaint();
+            });
         }).start();
 
         JScrollPane statusScroll = new JScrollPane(statusListPanel);
@@ -337,123 +257,24 @@ public class Dashboard extends JPanel {
 
         middlePanel.add(chartPanel, BorderLayout.CENTER);
         middlePanel.add(statusPanel, BorderLayout.EAST);
+        return middlePanel;
+    }
 
-        // --- TABEL AKTIVITAS ---
-        String[] dashboardHeaders = { "Tanggal", "Batch", "Kedelai Digunakan", "Hasil Tahu", "Operator", "Status" };
-        ActivityTable bottomPanel = new ActivityTable("Aktivitas Produksi Terbaru", dashboardHeaders, 5,
-                new ActivityTable.DataProvider() {
+    private ActivityTable buildActivityTable() {
+        String[] dashboardHeaders = {"Tanggal", "Batch", "Kedelai Digunakan", "Hasil Tahu", "Operator", "Status"};
+        ActivityTable table = new ActivityTable("Aktivitas Produksi Terbaru", dashboardHeaders, 5, new ActivityTable.DataProvider() {
+            @Override
+            public int getTotalRowCount(String keyword) {
+                return dashboardDAO.getTableTotalRows(keyword);
+            }
 
-                    private String buildWhereClause(String keyword) {
-                        if (keyword.isEmpty()) {
-                            return "";
-                        }
-                        return "WHERE p.batch LIKE '" + keyword + "%' " + "OR u.nama LIKE '%" + keyword + "%' "
-                                + "OR p.status LIKE '" + keyword + "%' ";
-                    }
-
-                    @Override
-                    public int getTotalRowCount(String keyword) {
-                        try {
-                            Connection conn = utils.DatabaseConfig.getKoneksi();
-                            Statement stmt = conn.createStatement();
-                            String query;
-
-                            if (keyword.isEmpty()) {
-                                query = "SELECT COUNT(id_produksi) AS total FROM produksi";
-                            } else {
-                                query = "SELECT COUNT(p.id_produksi) AS total FROM produksi p "
-                                        + "JOIN users u ON p.id_user = u.id_user " + buildWhereClause(keyword);
-                            }
-
-                            ResultSet rs = stmt.executeQuery(query);
-                            if (rs.next()) {
-                                return rs.getInt("total");
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        return 0;
-                    }
-
-                    @Override
-                    public List<String[]> getPageData(int limit, int offset, String keyword) {
-                        List<String[]> data = new ArrayList<>();
-                        String query;
-
-                        if (keyword.isEmpty()) {
-                            query = "SELECT p.tanggal, p.batch, p.hasil_tahu, p.status, u.nama AS nama_operator, "
-                                    + "(SELECT SUM(rp.jumlah) FROM record_produksi rp WHERE rp.id_produksi = p.id_produksi AND rp.id_bahan IN (SELECT id_bahan FROM bahan_baku WHERE nama LIKE '%Kedelai%')) AS jumlah_kedelai, "
-                                    + "(SELECT MAX(bb.satuan) FROM record_produksi rp JOIN bahan_baku bb ON rp.id_bahan = bb.id_bahan WHERE rp.id_produksi = p.id_produksi AND bb.nama LIKE '%Kedelai%') AS satuan_kedelai "
-                                    + "FROM (SELECT id_produksi FROM produksi ORDER BY tanggal DESC, id_produksi DESC LIMIT "
-                                    + limit + " OFFSET " + offset + ") AS filter_p "
-                                    + "JOIN produksi p ON p.id_produksi = filter_p.id_produksi "
-                                    + "JOIN users u ON p.id_user = u.id_user "
-                                    + "ORDER BY p.tanggal DESC, p.id_produksi DESC";
-                        } else {
-                            query = "SELECT p.tanggal, p.batch, p.hasil_tahu, p.status, u.nama AS nama_operator, "
-                                    + "(SELECT SUM(rp.jumlah) FROM record_produksi rp WHERE rp.id_produksi = p.id_produksi AND rp.id_bahan IN (SELECT id_bahan FROM bahan_baku WHERE nama LIKE '%Kedelai%')) AS jumlah_kedelai, "
-                                    + "(SELECT MAX(bb.satuan) FROM record_produksi rp JOIN bahan_baku bb ON rp.id_bahan = bb.id_bahan WHERE rp.id_produksi = p.id_produksi AND bb.nama LIKE '%Kedelai%') AS satuan_kedelai "
-                                    + "FROM produksi p "
-                                    + "JOIN users u ON p.id_user = u.id_user "
-                                    + buildWhereClause(keyword)
-                                    + "ORDER BY p.tanggal DESC, p.id_produksi DESC LIMIT " + limit + " OFFSET "
-                                    + offset;
-                        }
-
-                        try {
-                            Connection conn = utils.DatabaseConfig.getKoneksi();
-                            Statement stmt = conn.createStatement();
-                            ResultSet rs = stmt.executeQuery(query);
-                            java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy");
-
-                            while (rs.next()) {
-                                java.sql.Date dbDate = rs.getDate("tanggal");
-                                String date = (dbDate != null) ? sdf.format(dbDate) : "-";
-                                String batch = rs.getString("batch");
-                                String hasil = rs.getInt("hasil_tahu") + " potong";
-                                String kedelai = "-";
-
-                                if (rs.getObject("jumlah_kedelai") != null) {
-                                    double jumlah = rs.getDouble("jumlah_kedelai");
-                                    String satuan = rs.getString("satuan_kedelai");
-                                    if (satuan == null) {
-                                        satuan = "";
-                                    }
-                                    kedelai = (jumlah == (long) jumlah) ? String.format("%d %s", (long) jumlah, satuan)
-                                            : String.format("%s %s", jumlah, satuan);
-                                }
-
-                                String operator = rs.getString("nama_operator");
-                                if (operator != null && operator.contains(" ")) {
-                                    operator = operator.split(" ")[0];
-                                }
-
-                                data.add(
-                                        new String[] { date, batch, kedelai, hasil, operator, rs.getString("status") });
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        return data;
-                    }
-                });
-
-        bottomPanel.setPreferredSize(new Dimension(0, 390));
-        dashboardContainer.add(topCardsPanel);
-        dashboardContainer.add(Box.createVerticalStrut(20));
-        dashboardContainer.add(middlePanel);
-        dashboardContainer.add(Box.createVerticalStrut(20));
-        dashboardContainer.add(bottomPanel);
-
-        JScrollPane mainScrollPane = new JScrollPane(dashboardContainer);
-        mainScrollPane.setBorder(null);
-        mainScrollPane.getVerticalScrollBar().setUnitIncrement(16);
-        mainScrollPane.getViewport().setBackground(Theme.BG);
-        mainScrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        mainScrollPane.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-        mainContent.add(header, BorderLayout.NORTH);
-        mainContent.add(mainScrollPane, BorderLayout.CENTER);
-        return mainContent;
+            @Override
+            public List<String[]> getPageData(int limit, int offset, String keyword) {
+                return dashboardDAO.getTablePageData(limit, offset, keyword);
+            }
+        });
+        table.setPreferredSize(new Dimension(0, 390));
+        return table;
     }
 
     private JLabel createAnimatedLabel() {
@@ -475,9 +296,9 @@ public class Dashboard extends JPanel {
 
         JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         valuePanel.setBackground(Theme.CARD);
+        card.setOpaque(false);
         valuePanel.setOpaque(false);
         valuePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
         valuePanel.add(lblValue);
         valuePanel.add(new JLabel(unit) {
             {
@@ -501,7 +322,6 @@ public class Dashboard extends JPanel {
     private JPanel createStatusRow(String name, String sub, String val, String badgeText, Color badgeColor) {
         JPanel row = new JPanel(new BorderLayout());
         row.setBackground(Theme.CARD);
-
         JPanel leftPanel = new JPanel(new GridLayout(2, 1));
         leftPanel.setBackground(Theme.CARD);
         leftPanel.add(new JLabel(name) {
@@ -526,8 +346,7 @@ public class Dashboard extends JPanel {
             }
         });
 
-        RoundedPanel badge = new RoundedPanel(10,
-                new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 50));
+        RoundedPanel badge = new RoundedPanel(10, new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 50));
         badge.setLayout(new BorderLayout());
         badge.add(new JLabel(badgeText, SwingConstants.CENTER) {
             {
@@ -537,10 +356,47 @@ public class Dashboard extends JPanel {
         }, BorderLayout.CENTER);
 
         rightPanel.add(badge);
-
         row.add(leftPanel, BorderLayout.WEST);
         row.add(rightPanel, BorderLayout.EAST);
         return row;
+    }
+
+    private RoundedPanel createHeaderButton(String text, boolean isPrimary) {
+        Color defaultBg = isPrimary ? Theme.BLUE_ACCENT : Theme.BG;
+        Color hoverBg = isPrimary ? Theme.BLUE_ACCENT.darker() : Theme.CARD;
+        Color borderColor = isPrimary ? Theme.BLUE_ACCENT : Theme.BORDER;
+
+        RoundedPanel panel = new RoundedPanel(10, defaultBg);
+        panel.setLayout(new BorderLayout());
+        panel.setBorder(BorderFactory.createLineBorder(borderColor, 1));
+        panel.setPreferredSize(new Dimension(130, 35));
+        panel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+
+        JLabel label = new JLabel(text, SwingConstants.CENTER);
+        label.setForeground(isPrimary ? Color.WHITE : Theme.TEXT_PRIMARY);
+        label.setFont(new Font("SansSerif", Font.BOLD, 12));
+        panel.add(label, BorderLayout.CENTER);
+
+        panel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                panel.setBackground(hoverBg);
+                if (!isPrimary) {
+                    panel.setBorder(BorderFactory.createLineBorder(Theme.TEXT_SECONDARY, 1));
+                }
+                panel.repaint();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                panel.setBackground(defaultBg);
+                if (!isPrimary) {
+                    panel.setBorder(BorderFactory.createLineBorder(borderColor, 1));
+                }
+                panel.repaint();
+            }
+        });
+        return panel;
     }
 
     private JPanel createMockChartPanel(List<String> chartLabels, List<Integer> chartValues) {
@@ -575,8 +431,7 @@ public class Dashboard extends JPanel {
                 if (chartValues.isEmpty()) {
                     return -1;
                 }
-                int n = chartValues.size();
-                int maxVal = 1;
+                int n = chartValues.size(), maxVal = 1;
                 for (int h : chartValues) {
                     if (h > maxVal) {
                         maxVal = h;
@@ -587,17 +442,14 @@ public class Dashboard extends JPanel {
                 int paddingLeft = 50, paddingBottom = 30, paddingTop = 10, paddingRight = 10;
                 int chartWidth = getWidth() - paddingLeft - paddingRight;
                 int chartHeight = getHeight() - paddingTop - paddingBottom;
-
                 if (chartHeight <= 0 || chartWidth <= 0) {
                     return -1;
                 }
 
                 double scale = (double) chartHeight / maxVal;
                 int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
-                int width = (chartWidth - (space * (n - 1))) / n;
-                width = Math.max(2, Math.min(width, 40));
-                int totalContentWidth = (width * n) + (space * (n - 1));
-                int startX = paddingLeft + (chartWidth - totalContentWidth) / 2;
+                int width = Math.max(2, Math.min((chartWidth - (space * (n - 1))) / n, 40));
+                int startX = paddingLeft + (chartWidth - ((width * n) + (space * (n - 1)))) / 2;
 
                 for (int i = 0; i < n; i++) {
                     int barX = startX + (i * (width + space));
@@ -615,13 +467,11 @@ public class Dashboard extends JPanel {
                 super.paintComponent(g);
                 Graphics2D g2 = (Graphics2D) g;
                 g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
                 if (chartValues.isEmpty()) {
                     return;
                 }
 
-                int n = chartValues.size();
-                int maxVal = 1;
+                int n = chartValues.size(), maxVal = 1;
                 for (int h : chartValues) {
                     if (h > maxVal) {
                         maxVal = h;
@@ -632,17 +482,15 @@ public class Dashboard extends JPanel {
                 int paddingLeft = 50, paddingBottom = 30, paddingTop = 10, paddingRight = 10;
                 int chartWidth = getWidth() - paddingLeft - paddingRight;
                 int chartHeight = getHeight() - paddingTop - paddingBottom;
-
                 if (chartHeight <= 0 || chartWidth <= 0) {
                     return;
                 }
 
                 double scale = (double) chartHeight / maxVal;
-                int numGridLines = 4;
                 g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
-                for (int i = 0; i <= numGridLines; i++) {
-                    int y = paddingTop + chartHeight - (i * chartHeight / numGridLines);
-                    int value = maxVal * i / numGridLines;
+                for (int i = 0; i <= 4; i++) {
+                    int y = paddingTop + chartHeight - (i * chartHeight / 4);
+                    int value = maxVal * i / 4;
                     g2.setColor(new Color(Theme.BORDER.getRed(), Theme.BORDER.getGreen(), Theme.BORDER.getBlue(), 120));
                     g2.drawLine(paddingLeft, y, paddingLeft + chartWidth, y);
                     g2.setColor(Theme.TEXT_SECONDARY);
@@ -652,27 +500,22 @@ public class Dashboard extends JPanel {
                 }
 
                 int space = n > 15 ? 4 : (n > 7 ? 8 : 15);
-                int width = (chartWidth - (space * (n - 1))) / n;
-                width = Math.max(2, Math.min(width, 40));
-                int totalContentWidth = (width * n) + (space * (n - 1));
-                int startX = paddingLeft + (chartWidth - totalContentWidth) / 2;
+                int width = Math.max(2, Math.min((chartWidth - (space * (n - 1))) / n, 40));
+                int startX = paddingLeft + (chartWidth - ((width * n) + (space * (n - 1)))) / 2;
+
                 for (int i = 0; i < n; i++) {
                     int barX = startX + (i * (width + space));
                     int scaledHeight = (int) (chartValues.get(i) * scale);
                     int barY = paddingTop + chartHeight - scaledHeight;
+
                     if (n <= 15 || i % 3 == 0 || i == n - 1) {
                         g2.setColor(Theme.TEXT_SECONDARY);
                         String xLabel = chartLabels.get(i);
                         FontMetrics fm = g2.getFontMetrics();
-                        int labelX = barX + (width / 2) - (fm.stringWidth(xLabel) / 2);
-                        g2.drawString(xLabel, labelX, paddingTop + chartHeight + 20);
+                        g2.drawString(xLabel, barX + (width / 2) - (fm.stringWidth(xLabel) / 2), paddingTop + chartHeight + 20);
                     }
 
-                    if (i == hoveredBarIndex) {
-                        g2.setColor(Theme.BLUE_ACCENT.brighter());
-                    } else {
-                        g2.setColor(Theme.BLUE_ACCENT);
-                    }
+                    g2.setColor(i == hoveredBarIndex ? Theme.BLUE_ACCENT.brighter() : Theme.BLUE_ACCENT);
                     g2.fillRect(barX, barY, width, scaledHeight);
                 }
 
@@ -680,18 +523,14 @@ public class Dashboard extends JPanel {
                     int barX = startX + (hoveredBarIndex * (width + space));
                     int scaledHeight = (int) (chartValues.get(hoveredBarIndex) * scale);
                     int barY = paddingTop + chartHeight - scaledHeight;
-                    String valueText = chartValues.get(hoveredBarIndex) + " potong";
+                    String valueText = FormatUtil.formatAngka(chartValues.get(hoveredBarIndex)) + " potong";
                     String dateText = chartLabels.get(hoveredBarIndex);
                     FontMetrics fm = g2.getFontMetrics();
                     int textWidth = Math.max(fm.stringWidth(valueText), fm.stringWidth(dateText));
-                    g2.setColor(new Color(20, 20, 20, 220));
                     int tooltipX = barX + (width / 2) - (textWidth / 2) - 8;
-                    int tooltipY = barY - 45;
+                    int tooltipY = Math.max(barY - 45, 0);
 
-                    if (tooltipY < 0) {
-                        tooltipY = 0;
-                    }
-
+                    g2.setColor(new Color(20, 20, 20, 220));
                     g2.fillRoundRect(tooltipX, tooltipY, textWidth + 16, 38, 8, 8);
                     g2.setColor(Color.WHITE);
                     g2.drawString(valueText, tooltipX + 8, tooltipY + 16);
