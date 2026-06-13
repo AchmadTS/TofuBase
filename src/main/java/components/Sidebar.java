@@ -122,8 +122,12 @@ public class Sidebar extends JPanel {
         userPanel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                int confirm = JOptionPane.showConfirmDialog(Sidebar.this, "Apakah Anda yakin ingin keluar?", "Konfirmasi Log Out", JOptionPane.YES_NO_OPTION);
-                if (confirm == JOptionPane.YES_OPTION) {
+                JOptionPane optionPane = new JOptionPane("Apakah Anda yakin ingin keluar?", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
+                JDialog dialog = optionPane.createDialog("Konfirmasi Log Out");
+                dialog.setLocationRelativeTo(null);
+                dialog.setVisible(true);
+                Object value = optionPane.getValue();
+                if (value instanceof Integer confirm && confirm == JOptionPane.YES_OPTION) {
                     Window window = SwingUtilities.getWindowAncestor(Sidebar.this);
                     if (window != null) {
                         window.dispose();

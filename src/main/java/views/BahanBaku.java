@@ -78,7 +78,6 @@ public class BahanBaku extends JPanel {
         btnAdd.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                // Tampilkan Modal
                 Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(BahanBaku.this);
                 ModalTambahBahan modal = new ModalTambahBahan(parentFrame);
                 modal.setVisible(true);
@@ -133,8 +132,8 @@ public class BahanBaku extends JPanel {
     }
 
     private ActivityTable buildBahanTable() {
-        String[] bahanHeaders = {"ID", "Nama Bahan", "Stok Tersedia", "Satuan", "Rata-rata harga Beli", "Min. Stok", "Status Stok"};
-        return new ActivityTable("Daftar Stok Bahan Baku", bahanHeaders, 6, new ActivityTable.DataProvider() {
+        String[] bahanHeaders = {"ID", "Nama Bahan", "Stok Tersedia", "Satuan", "Rata-rata harga Beli", "Min. Stok", "Status Stok", "Aksi"};
+        ActivityTable table = new ActivityTable("Daftar Stok Bahan Baku", bahanHeaders, 6, new ActivityTable.DataProvider() {
             @Override
             public int getTotalRowCount(String keyword) {
                 return bahanBakuDAO.getTableTotalRows(keyword);
@@ -145,6 +144,12 @@ public class BahanBaku extends JPanel {
                 return bahanBakuDAO.getTablePageData(limit, offset, keyword);
             }
         });
+
+        table.setTableActionListener((id, name) -> {
+            JOptionPane.showMessageDialog(this, "Membuka Riwayat Transaksi untuk:\n\nBahan: " + name + "\nID: " + id, "Informasi Sistem", JOptionPane.INFORMATION_MESSAGE);
+        });
+
+        return table;
     }
 
     private RoundedPanel createHeaderButton(String text, boolean isPrimary) {

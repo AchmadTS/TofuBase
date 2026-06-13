@@ -126,7 +126,7 @@ public class BahanBakuDAO {
         }
         return data;
     }
-    
+
     public Map<Integer, String> getSupplierList() {
         Map<Integer, String> suppliers = new HashMap<>();
         String query = "SELECT id_supplier, nama FROM supplier ORDER BY nama ASC";
@@ -168,7 +168,6 @@ public class BahanBakuDAO {
     public boolean simpanAtauUpdateBahan(String nama, int idSupplier, String satuan, double qty, double minStok, double hargaBeli) {
         String normalizedInput = nama.replaceAll("\\s+", "").toLowerCase();
         String checkQuery = "SELECT id_bahan, stok FROM bahan_baku WHERE LOWER(REPLACE(nama, ' ', '')) = '" + normalizedInput + "'";
-
         try {
             Connection conn = DatabaseConfig.getKoneksi();
             Statement stmt = conn.createStatement();
@@ -185,8 +184,7 @@ public class BahanBakuDAO {
                         + "WHERE id_bahan = " + idBahan;
                 stmt.executeUpdate(updateQuery);
             } else {
-                String insertQuery = "INSERT INTO bahan_baku (nama, id_supplier, satuan, stok, min_stok, harga_beli) "
-                        + "VALUES ('" + nama + "', " + idSupplier + ", '" + satuan + "', " + qty + ", " + minStok + ", " + hargaBeli + ")";
+                String insertQuery = "INSERT INTO bahan_baku (nama, id_supplier, satuan, stok, min_stok, harga_beli) " + "VALUES ('" + nama + "', " + idSupplier + ", '" + satuan + "', " + qty + ", " + minStok + ", " + hargaBeli + ")";
                 stmt.executeUpdate(insertQuery);
             }
             return true;
@@ -194,5 +192,23 @@ public class BahanBakuDAO {
             e.printStackTrace();
             return false;
         }
+    }
+
+    public Map<String, Object> cekDetailBahan(String namaBahan) {
+        Map<String, Object> result = new java.util.HashMap<>();
+        String query = "SELECT satuan, min_stok FROM bahan_baku WHERE nama = ? LIMIT 1";
+        try (java.sql.Connection conn = utils.DatabaseConfig.getKoneksi(); java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, namaBahan);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    result.put("satuan", rs.getString("satuan"));
+                    result.put("min_stok", rs.getDouble("min_stok"));
+                    return result;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

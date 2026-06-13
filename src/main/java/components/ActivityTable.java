@@ -5,6 +5,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Locale;
 import utils.Theme;
@@ -18,10 +20,16 @@ public class ActivityTable extends RoundedPanel {
         List<String[]> getPageData(int limit, int offset, String keyword);
     }
 
+    public interface TableActionListener {
+
+        void onViewHistory(String id, String name);
+    }
+
     private String title;
     private String[] headers;
     private int statusColIndex;
     private DataProvider dataProvider;
+    private TableActionListener tableActionListener;
     private int currentPage = 1;
     private int entriesPerPage = 5;
     private int totalData = 0;
@@ -44,6 +52,10 @@ public class ActivityTable extends RoundedPanel {
         setMinimumSize(new Dimension(0, 390));
         buildUI();
         updateTableModel();
+    }
+
+    public void setTableActionListener(TableActionListener listener) {
+        this.tableActionListener = listener;
     }
 
     private void buildUI() {
@@ -93,7 +105,6 @@ public class ActivityTable extends RoundedPanel {
         txtSearch.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Theme.BORDER),
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
-        // --- DEBOUNCER 400ms ---
         searchTimer = new Timer(400, e -> {
             currentPage = 1;
             updateTableModel();
@@ -122,7 +133,6 @@ public class ActivityTable extends RoundedPanel {
         topHeader.add(controlRow, BorderLayout.CENTER);
         add(topHeader, BorderLayout.NORTH);
 
-        // --- Grid Tabel sesuai jumlah Header ---
         tableContentPanel = new JPanel();
         tableContentPanel.setLayout(new BoxLayout(tableContentPanel, BoxLayout.Y_AXIS));
         tableContentPanel.setOpaque(false);
@@ -159,7 +169,6 @@ public class ActivityTable extends RoundedPanel {
         tableScroll.setMinimumSize(new Dimension(0, 200));
         add(tableScroll, BorderLayout.CENTER);
 
-        // --- Pagination ---
         JPanel paginationRow = new JPanel(new BorderLayout());
         paginationRow.setOpaque(false);
         paginationRow.setBorder(new EmptyBorder(15, 0, 0, 0));
@@ -288,7 +297,48 @@ public class ActivityTable extends RoundedPanel {
             boolean addRightBorder = (i < cols - 1);
             String cellData = (i < rowData.length && rowData[i] != null) ? rowData[i] : "-";
 
-            if (i == statusColIndex) {
+            if (headers[i].equalsIgnoreCase("Aksi")) {
+                JPanel actionWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 4));
+                actionWrapper.setOpaque(false);
+                if (addRightBorder) {
+                    actionWrapper.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
+                }
+
+                RoundedPanel btnView = new RoundedPanel(10, Theme.BLUE_ACCENT);
+                btnView.setPreferredSize(new Dimension(34, 30));
+                btnView.setLayout(new BorderLayout());
+                btnView.setCursor(new Cursor(Cursor.HAND_CURSOR));
+                btnView.setToolTipText("Lihat Riwayat Transaksi");
+                JLabel lblIcon = new JLabel("👁", SwingConstants.CENTER);
+                lblIcon.setForeground(Color.WHITE);
+                lblIcon.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 15));
+                btnView.add(lblIcon, BorderLayout.CENTER);
+                btnView.addMouseListener(new MouseAdapter() {
+                    @Override
+                    public void mouseEntered(MouseEvent e) {
+                        btnView.setBackground(Theme.BLUE_ACCENT.brighter());
+                        btnView.repaint();
+                    }
+
+                    @Override
+                    public void mouseExited(MouseEvent e) {
+                        btnView.setBackground(Theme.BLUE_ACCENT);
+                        btnView.repaint();
+                    }
+
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        if (tableActionListener != null) {
+                            String targetId = rowData.length > 0 ? rowData[0] : "-";
+                            String targetName = rowData.length > 1 ? rowData[1] : "-";
+                            tableActionListener.onViewHistory(targetId, targetName);
+                        }
+                    }
+                });
+
+                actionWrapper.add(btnView);
+                row.add(actionWrapper);
+            } else if (i == statusColIndex) {
                 Color badgeColor = Theme.TEXT_PRIMARY;
                 String lowerStr = cellData.toLowerCase();
                 if (lowerStr.contains("selesai") || lowerStr.contains("lunas") || lowerStr.contains("aman")) {
@@ -318,8 +368,7 @@ public class ActivityTable extends RoundedPanel {
                 badgeWrapper.add(pillPanel);
                 row.add(badgeWrapper);
             } else {
-                row.add(createTableCell(cellData, (i == 1) ? Theme.TEXT_SECONDARY : Theme.TEXT_PRIMARY,
-                        addRightBorder));
+                row.add(createTableCell(cellData, (i == 1) ? Theme.TEXT_SECONDARY : Theme.TEXT_PRIMARY, addRightBorder));
             }
         }
         return row;

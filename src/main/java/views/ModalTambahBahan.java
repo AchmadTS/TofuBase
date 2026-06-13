@@ -6,12 +6,17 @@ import utils.Theme;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
+import components.ModernScrollBarUI;
+import javax.swing.plaf.basic.BasicComboPopup;
+import javax.swing.plaf.basic.ComboPopup;
 
 public class ModalTambahBahan extends JDialog {
 
@@ -21,6 +26,8 @@ public class ModalTambahBahan extends JDialog {
     private JComboBox<ComboItem> cbSupplier;
     private JComboBox<String> cbSatuan;
     private JTextField txtSatuanBaru;
+    private JPanel satuanInputWrapper;
+    private JLabel lblToggleSatuan;
     private boolean isSatuanBaruMode = false;
     private JTextField txtQty, txtMinStok, txtHarga;
     private Point initialClick;
@@ -159,6 +166,24 @@ public class ModalTambahBahan extends JDialog {
         form.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         txtNama = createRawTextField("cth. Kedelai, Garam, Cuka...");
+        Timer checkTimer = new Timer(500, e -> {
+            checkBahanExist(txtNama.getText().trim());
+        });
+        checkTimer.setRepeats(false);
+        txtNama.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                checkTimer.restart();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                checkTimer.restart();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                checkTimer.restart();
+            }
+        });
+
         JPanel grpNama = createFormGroup("NAMA BAHAN", wrapInput(txtNama), null);
         grpNama.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(grpNama);
@@ -208,6 +233,60 @@ public class ModalTambahBahan extends JDialog {
         grpHarga.setAlignmentX(Component.LEFT_ALIGNMENT);
         form.add(grpHarga);
         return form;
+    }
+
+    private void checkBahanExist(String nama) {
+        if (nama.isEmpty() || nama.startsWith("cth.")) {
+            resetAutofill();
+            return;
+        }
+
+        new Thread(() -> {
+            Map<String, Object> detail = bahanDAO.cekDetailBahan(nama);
+            SwingUtilities.invokeLater(() -> {
+                if (detail != null && !detail.isEmpty()) {
+                    String satuan = (String) detail.get("satuan");
+                    double minStok = (Double) detail.get("min_stok");
+                    
+                    if (isSatuanBaruMode) {
+                        isSatuanBaruMode = false;
+                        CardLayout cl = (CardLayout) (satuanInputWrapper.getLayout());
+                        cl.show(satuanInputWrapper, "COMBO");
+                    }
+
+                    cbSatuan.setSelectedItem(satuan);
+                    cbSatuan.setEnabled(false);
+
+                    java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                    txtMinStok.setText(formatter.format(minStok));
+                    txtMinStok.setEnabled(false);
+
+                    if (lblToggleSatuan != null) {
+                        lblToggleSatuan.setVisible(false);
+                    }
+                } else {
+                    resetAutofill();
+                }
+            });
+        }).start();
+    }
+
+    private void resetAutofill() {
+        cbSatuan.setEnabled(true);
+        txtMinStok.setEnabled(true);
+        if (lblToggleSatuan != null) {
+            lblToggleSatuan.setVisible(true);
+            String hexPrimary = String.format("#%06x", (Theme.BLUE_ACCENT.getRGB() & 0xFFFFFF));
+            String hexDanger = String.format("#%06x", (Theme.RED.getRGB() & 0xFFFFFF));
+            if (isSatuanBaruMode) {
+                lblToggleSatuan.setText("<html><u style='color:" + hexDanger + ";'>batal, pilih dari daftar</u></html>");
+            } else {
+                lblToggleSatuan.setText("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
+            }
+        }
+
+        this.revalidate();
+        this.repaint();
     }
 
     private void setupNumberFormatListener(JTextField txt, String prefix) {
@@ -384,11 +463,28 @@ public class ModalTambahBahan extends JDialog {
                 label.setBackground(isSelected ? Theme.BORDER : Theme.CARD);
                 label.setForeground(Theme.TEXT_PRIMARY);
                 label.setOpaque(true);
+                label.setBorder(BorderFactory.createEmptyBorder(8, 10, 8, 10));
                 return label;
             }
         });
 
         cb.setUI(new BasicComboBoxUI() {
+            @Override
+            protected ComboPopup createPopup() {
+                BasicComboPopup popup = new BasicComboPopup(comboBox) {
+                    @Override
+                    protected JScrollPane createScroller() {
+                        JScrollPane scroller = new JScrollPane(list, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+                        scroller.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+                        scroller.getVerticalScrollBar().setUnitIncrement(16);
+                        scroller.setBorder(BorderFactory.createLineBorder(Theme.BORDER, 1));
+                        return scroller;
+                    }
+                };
+                popup.setBorder(BorderFactory.createEmptyBorder());
+                return popup;
+            }
+
             @Override
             public void paintCurrentValueBackground(Graphics g, Rectangle bounds, boolean hasFocus) {
                 g.setColor(Theme.CARD);
@@ -445,18 +541,18 @@ public class ModalTambahBahan extends JDialog {
         lblTitle.setBorder(new EmptyBorder(0, 0, 5, 0));
         lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-        JPanel inputWrapper = new JPanel(new CardLayout());
-        inputWrapper.setOpaque(false);
-        inputWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-        inputWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        inputWrapper.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
+        satuanInputWrapper = new JPanel(new CardLayout());
+        satuanInputWrapper.setOpaque(false);
+        satuanInputWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        satuanInputWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+        satuanInputWrapper.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
 
         cbSatuan = new JComboBox<>();
         styleComboBox(cbSatuan);
         txtSatuanBaru = createRawTextField("Ketik satuan baru...");
 
-        inputWrapper.add(wrapInput(cbSatuan), "COMBO");
-        inputWrapper.add(wrapInput(txtSatuanBaru), "TEXT");
+        satuanInputWrapper.add(wrapInput(cbSatuan), "COMBO");
+        satuanInputWrapper.add(wrapInput(txtSatuanBaru), "TEXT");
 
         JPanel toggleContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
         toggleContainer.setOpaque(false);
@@ -465,28 +561,28 @@ public class ModalTambahBahan extends JDialog {
         String hexPrimary = String.format("#%06x", (Theme.BLUE_ACCENT.getRGB() & 0xFFFFFF));
         String hexDanger = String.format("#%06x", (Theme.RED.getRGB() & 0xFFFFFF));
 
-        JLabel lblToggle = new JLabel("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
-        lblToggle.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        lblToggle.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        lblToggle.addMouseListener(new MouseAdapter() {
+        lblToggleSatuan = new JLabel("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
+        lblToggleSatuan.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        lblToggleSatuan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblToggleSatuan.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
                 isSatuanBaruMode = !isSatuanBaruMode;
-                CardLayout cl = (CardLayout) (inputWrapper.getLayout());
+                CardLayout cl = (CardLayout) (satuanInputWrapper.getLayout());
                 if (isSatuanBaruMode) {
-                    cl.show(inputWrapper, "TEXT");
-                    lblToggle.setText("<html><u style='color:" + hexDanger + ";'>batal, pilih dari daftar</u></html>");
+                    cl.show(satuanInputWrapper, "TEXT");
+                    lblToggleSatuan.setText("<html><u style='color:" + hexDanger + ";'>batal, pilih dari daftar</u></html>");
                     txtSatuanBaru.requestFocus();
                 } else {
-                    cl.show(inputWrapper, "COMBO");
-                    lblToggle.setText("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
+                    cl.show(satuanInputWrapper, "COMBO");
+                    lblToggleSatuan.setText("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
                 }
             }
         });
 
-        toggleContainer.add(lblToggle);
+        toggleContainer.add(lblToggleSatuan);
         pnlSatuan.add(lblTitle);
-        pnlSatuan.add(inputWrapper);
+        pnlSatuan.add(satuanInputWrapper);
         pnlSatuan.add(toggleContainer);
         return pnlSatuan;
     }
