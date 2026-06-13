@@ -26,7 +26,7 @@ public class ModalTambahBahan extends JDialog {
     private Point initialClick;
 
     public ModalTambahBahan(Frame parent) {
-        super(parent, "Tambah Bahan Baku", false);
+        super(parent, "Tambah Bahan Baku", true);
         setSize(580, 680);
         setLocationRelativeTo(parent);
         setUndecorated(true);

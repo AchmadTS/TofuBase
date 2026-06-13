@@ -2,11 +2,13 @@ package components;
 
 import javax.swing.*;
 import javax.swing.plaf.basic.BasicScrollBarUI;
-
 import java.awt.*;
 import utils.Theme;
 
 public class ModernScrollBarUI extends BasicScrollBarUI {
+
+    // Atur ketebalan di sini (dalam pixel)
+    private final int THICKNESS = 14;
 
     @Override
     protected void paintTrack(Graphics g, JComponent c, Rectangle trackBounds) {
@@ -19,8 +21,24 @@ public class ModernScrollBarUI extends BasicScrollBarUI {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setColor(new Color(100, 100, 100));
-        g2.fillRoundRect(thumbBounds.x + 4, thumbBounds.y + 2, thumbBounds.width - 8, thumbBounds.height - 4, 8, 8);
+
+        if (scrollbar.getOrientation() == JScrollBar.VERTICAL) {
+            // Margin kiri/kanan 3px, margin atas/bawah 2px
+            g2.fillRoundRect(thumbBounds.x + 3, thumbBounds.y + 2, thumbBounds.width - 6, thumbBounds.height - 4, 8, 8);
+        } else {
+            // Margin atas/bawah 3px, margin kiri/kanan 2px
+            g2.fillRoundRect(thumbBounds.x + 2, thumbBounds.y + 3, thumbBounds.width - 4, thumbBounds.height - 6, 8, 8);
+        }
         g2.dispose();
+    }
+
+    @Override
+    public Dimension getPreferredSize(JComponent c) {
+        if (scrollbar.getOrientation() == JScrollBar.VERTICAL) {
+            return new Dimension(THICKNESS, 0);
+        } else {
+            return new Dimension(0, THICKNESS);
+        }
     }
 
     @Override
@@ -36,8 +54,6 @@ public class ModernScrollBarUI extends BasicScrollBarUI {
     private JButton createZeroButton() {
         JButton jbutton = new JButton();
         jbutton.setPreferredSize(new Dimension(0, 0));
-        jbutton.setMinimumSize(new Dimension(0, 0));
-        jbutton.setMaximumSize(new Dimension(0, 0));
         return jbutton;
     }
 }

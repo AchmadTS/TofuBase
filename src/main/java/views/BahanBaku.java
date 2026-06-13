@@ -45,7 +45,8 @@ public class BahanBaku extends JPanel {
         mainScroll.getViewport().setBackground(Theme.BG);
         mainScroll.getVerticalScrollBar().setUnitIncrement(16);
         mainScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-
+        mainScroll.getHorizontalScrollBar().setUnitIncrement(16);
+        mainScroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
         mainContent.add(mainScroll, BorderLayout.CENTER);
         return mainContent;
     }

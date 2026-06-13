@@ -22,11 +22,17 @@ import java.util.Map;
 public class Dashboard extends JPanel {
 
     private final DashboardDAO dashboardDAO = new DashboardDAO();
+    private JLabel lblProdHariIni;
+    private JLabel lblStokKedelai;
+    private JLabel lblPendapatan;
+    private JLabel lblTahuSiapJual;
+    private JPanel statusListPanel;
 
     public Dashboard(String userName, String userRole) {
         setLayout(new BorderLayout());
         setBackground(Theme.BG);
         add(createMainContent(), BorderLayout.CENTER);
+        startAutoRefresh();
     }
 
     private JPanel createMainContent() {
@@ -56,6 +62,73 @@ public class Dashboard extends JPanel {
         return mainContent;
     }
 
+    private void startAutoRefresh() {
+        this.addComponentListener(new java.awt.event.ComponentAdapter() {
+            @Override
+            public void componentShown(java.awt.event.ComponentEvent evt) {
+                refreshTopCardsData();
+                refreshStatusStokData();
+            }
+        });
+
+        new Timer(15_000, e -> {
+            if (isShowing()) {
+                refreshTopCardsData();
+                refreshStatusStokData();
+            }
+        }).start();
+        refreshTopCardsData();
+        refreshStatusStokData();
+    }
+
+    private void refreshTopCardsData() {
+        new Thread(() -> {
+            Map<String, String> data = dashboardDAO.getTopCardsData();
+            SwingUtilities.invokeLater(() -> {
+                if (lblProdHariIni != null) {
+                    lblProdHariIni.setText(data.getOrDefault("produksi", "0"));
+                }
+                if (lblStokKedelai != null) {
+                    lblStokKedelai.setText(data.getOrDefault("stok", "0"));
+                }
+                if (lblPendapatan != null) {
+                    lblPendapatan.setText(data.getOrDefault("pendapatan", "Rp 0"));
+                }
+                if (lblTahuSiapJual != null) {
+                    lblTahuSiapJual.setText(data.getOrDefault("tahu", "0"));
+                }
+            });
+        }).start();
+    }
+
+    private void refreshStatusStokData() {
+        new Thread(() -> {
+            List<String[]> dbRows = dashboardDAO.getStatusStokData();
+            List<JPanel> uiRows = new ArrayList<>();
+            for (String[] r : dbRows) {
+                String nama = r[0], satuan = r[1];
+                double minStok = Double.parseDouble(r[2]), stok = Double.parseDouble(r[3]);
+                String sub = "Min. stok: " + FormatUtil.formatAngka(minStok) + " " + satuan;
+                String val = FormatUtil.formatAngka(stok) + " " + satuan;
+                String bText = stok <= minStok / 2 ? "Kritis" : (stok <= minStok ? "Rendah" : "Aman");
+                Color bColor = stok <= minStok / 2 ? Theme.RED : (stok <= minStok ? Theme.WARNING : Theme.GREEN);
+                uiRows.add(createStatusRow(nama, sub, val, bText, bColor));
+            }
+            SwingUtilities.invokeLater(() -> {
+                if (statusListPanel != null) {
+                    statusListPanel.removeAll();
+                    statusListPanel.add(Box.createVerticalStrut(20));
+                    for (JPanel row : uiRows) {
+                        statusListPanel.add(row);
+                        statusListPanel.add(Box.createVerticalStrut(15));
+                    }
+                    statusListPanel.revalidate();
+                    statusListPanel.repaint();
+                }
+            });
+        }).start();
+    }
+
     private JPanel buildHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(Theme.BG);
@@ -70,14 +143,30 @@ public class Dashboard extends JPanel {
         JLabel headerDate = new JLabel(LocalDate.now().format(formatter));
         headerDate.setFont(new Font("SansSerif", Font.PLAIN, 14));
         headerDate.setForeground(Theme.TEXT_SECONDARY);
-        new javax.swing.Timer(60_000, e -> headerDate.setText(LocalDate.now().format(formatter))).start();
+        new Timer(60_000, e -> headerDate.setText(LocalDate.now().format(formatter))).start();
         titlePanel.add(headerTitle);
         titlePanel.add(headerDate);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Theme.BG);
-        buttonPanel.add(createHeaderButton("Export PDF", false));
-        buttonPanel.add(createHeaderButton("+ Tambah Data", true));
+
+        RoundedPanel btnExport = createHeaderButton("Export PDF", false);
+        RoundedPanel btnAdd = createHeaderButton("+ Tambah Data", true);
+//        btnAdd.addMouseListener(new MouseAdapter() {
+//            @Override
+//            public void mouseClicked(MouseEvent e) {
+//                Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(Dashboard.this);
+//                ModalTambahBahan modal = new ModalTambahBahan(parentFrame);
+//                modal.setVisible(true);
+//                if (modal.isSaved()) {
+//                    refreshTopCardsData();
+//                    refreshStatusStokData();
+//                }
+//            }
+//        });
+
+        buttonPanel.add(btnExport);
+        buttonPanel.add(btnAdd);
 
         header.add(titlePanel, BorderLayout.WEST);
         header.add(buttonPanel, BorderLayout.EAST);
@@ -89,26 +178,18 @@ public class Dashboard extends JPanel {
         topCardsPanel.setBackground(Theme.BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
-        JLabel lblProdHariIni = createAnimatedLabel();
-        JLabel lblStokKedelai = createAnimatedLabel();
-        JLabel lblPendapatan = createAnimatedLabel();
-        JLabel lblTahuSiapJual = createAnimatedLabel();
+        // Inisialisasi variabel global
+        lblProdHariIni = createAnimatedLabel();
+        lblStokKedelai = createAnimatedLabel();
+        lblPendapatan = createAnimatedLabel();
+        lblTahuSiapJual = createAnimatedLabel();
 
         topCardsPanel.add(createStatCard("PRODUKSI HARI INI", lblProdHariIni, "potong", "Terbaru hari ini", Theme.GREEN));
         topCardsPanel.add(createStatCard("STOK KEDELAI", lblStokKedelai, "kg", "Sesuai gudang", Theme.WARNING));
         topCardsPanel.add(createStatCard("PENDAPATAN", lblPendapatan, "jt", "Bulan ini", Theme.GREEN));
         topCardsPanel.add(createStatCard("TAHU SIAP JUAL", lblTahuSiapJual, "potong", "Total semua jenis", Theme.TEXT_SECONDARY));
 
-        new Thread(() -> {
-            Map<String, String> data = dashboardDAO.getTopCardsData();
-            SwingUtilities.invokeLater(() -> {
-                lblProdHariIni.setText(data.getOrDefault("produksi", "0"));
-                lblStokKedelai.setText(data.getOrDefault("stok", "0"));
-                lblPendapatan.setText(data.getOrDefault("pendapatan", "Rp 0"));
-                lblTahuSiapJual.setText(data.getOrDefault("tahu", "0"));
-            });
-        }).start();
-
+        // Hapus pemanggilan Thread di sini karena sudah ditangani oleh startAutoRefresh()
         return topCardsPanel;
     }
 
@@ -212,7 +293,7 @@ public class Dashboard extends JPanel {
         statusTitle.setFont(new Font("SansSerif", Font.BOLD, 16));
         statusPanel.add(statusTitle, BorderLayout.NORTH);
 
-        JPanel statusListPanel = new JPanel();
+        statusListPanel = new JPanel();
         statusListPanel.setLayout(new BoxLayout(statusListPanel, BoxLayout.Y_AXIS));
         statusListPanel.setOpaque(false);
 
@@ -221,30 +302,6 @@ public class Dashboard extends JPanel {
         lblLoadingStatus.setAlignmentX(Component.CENTER_ALIGNMENT);
         statusListPanel.add(Box.createVerticalStrut(20));
         statusListPanel.add(lblLoadingStatus);
-
-        new Thread(() -> {
-            List<String[]> dbRows = dashboardDAO.getStatusStokData();
-            List<JPanel> uiRows = new ArrayList<>();
-            for (String[] r : dbRows) {
-                String nama = r[0], satuan = r[1];
-                double minStok = Double.parseDouble(r[2]), stok = Double.parseDouble(r[3]);
-                String sub = "Min. stok: " + FormatUtil.formatAngka(minStok) + " " + satuan;
-                String val = FormatUtil.formatAngka(stok) + " " + satuan;
-                String bText = stok <= minStok / 2 ? "Kritis" : (stok <= minStok ? "Rendah" : "Aman");
-                Color bColor = stok <= minStok / 2 ? Theme.RED : (stok <= minStok ? Theme.WARNING : Theme.GREEN);
-                uiRows.add(createStatusRow(nama, sub, val, bText, bColor));
-            }
-            SwingUtilities.invokeLater(() -> {
-                statusListPanel.removeAll();
-                statusListPanel.add(Box.createVerticalStrut(20));
-                for (JPanel row : uiRows) {
-                    statusListPanel.add(row);
-                    statusListPanel.add(Box.createVerticalStrut(15));
-                }
-                statusListPanel.revalidate();
-                statusListPanel.repaint();
-            });
-        }).start();
 
         JScrollPane statusScroll = new JScrollPane(statusListPanel);
         statusScroll.setOpaque(false);

@@ -10,7 +10,9 @@ import java.util.Locale;
 import utils.Theme;
 
 public class ActivityTable extends RoundedPanel {
+
     public interface DataProvider {
+
         int getTotalRowCount(String keyword);
 
         List<String[]> getPageData(int limit, int offset, String keyword);
@@ -28,6 +30,7 @@ public class ActivityTable extends RoundedPanel {
     private JButton btnPageNum, btnPrev, btnNext;
     private JTextField txtSearch;
     private JComboBox<String> cbEntries;
+    private Timer searchTimer;
 
     public ActivityTable(String title, String[] headers, int statusColIndex, DataProvider dataProvider) {
         super(20, Theme.CARD);
@@ -60,7 +63,7 @@ public class ActivityTable extends RoundedPanel {
         JLabel lblShow = new JLabel("Tampilkan ");
         lblShow.setForeground(Theme.TEXT_SECONDARY);
 
-        cbEntries = new JComboBox<>(new String[] { "5", "10", "25", "50" });
+        cbEntries = new JComboBox<>(new String[]{"5", "10", "25", "50"});
         cbEntries.setBackground(Theme.BG);
         cbEntries.setForeground(Theme.TEXT_PRIMARY);
         cbEntries.setCursor(new Cursor(Cursor.HAND_CURSOR));
@@ -89,22 +92,25 @@ public class ActivityTable extends RoundedPanel {
         txtSearch.setCaretColor(Theme.TEXT_PRIMARY);
         txtSearch.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Theme.BORDER),
                 BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+
+        // --- DEBOUNCER 400ms ---
+        searchTimer = new Timer(400, e -> {
+            currentPage = 1;
+            updateTableModel();
+        });
+        searchTimer.setRepeats(false);
+
         txtSearch.getDocument().addDocumentListener(new DocumentListener() {
             public void insertUpdate(DocumentEvent e) {
-                search();
+                searchTimer.restart();
             }
 
             public void removeUpdate(DocumentEvent e) {
-                search();
+                searchTimer.restart();
             }
 
             public void changedUpdate(DocumentEvent e) {
-                search();
-            }
-
-            private void search() {
-                currentPage = 1;
-                updateTableModel();
+                searchTimer.restart();
             }
         });
 
@@ -132,9 +138,7 @@ public class ActivityTable extends RoundedPanel {
             l.setForeground(Theme.TEXT_SECONDARY);
             l.setFont(new Font("SansSerif", Font.PLAIN, 12));
             if (i < cols - 1) {
-                l.setBorder(
-                        BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER),
-                                BorderFactory.createEmptyBorder(10, 5, 10, 5)));
+                l.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER), BorderFactory.createEmptyBorder(10, 5, 10, 5)));
             } else {
                 l.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
             }
@@ -149,6 +153,8 @@ public class ActivityTable extends RoundedPanel {
         tableScroll.getColumnHeader().setOpaque(false);
         tableScroll.getVerticalScrollBar().setUnitIncrement(16);
         tableScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        tableScroll.getHorizontalScrollBar().setUnitIncrement(16);
+        tableScroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
         tableScroll.setPreferredSize(new Dimension(0, 200));
         tableScroll.setMinimumSize(new Dimension(0, 200));
         add(tableScroll, BorderLayout.CENTER);
@@ -199,56 +205,73 @@ public class ActivityTable extends RoundedPanel {
         add(paginationRow, BorderLayout.SOUTH);
     }
 
-    private void updateTableModel() {
+    public void updateTableModel() {
         String keyword = txtSearch.getText().trim();
         tableContentPanel.removeAll();
-
-        // Get Total Data dari Provider
-        totalData = dataProvider.getTotalRowCount(keyword);
-
-        int totalPages = (int) Math.ceil((double) totalData / entriesPerPage);
-        if (totalPages == 0) {
-            totalPages = 1;
-        }
-        if (currentPage > totalPages) {
-            currentPage = totalPages;
-        }
-        if (currentPage < 1) {
-            currentPage = 1;
-        }
-
-        int offset = (currentPage - 1) * entriesPerPage;
-
-        // Get Baris Data Matang dari Provider
-        List<String[]> pageData = dataProvider.getPageData(entriesPerPage, offset, keyword);
-
-        // Render Tabel
-        if (pageData.isEmpty()) {
-            JLabel lblEmpty = new JLabel("Data tidak ditemukan");
-            lblEmpty.setForeground(Theme.TEXT_SECONDARY);
-            lblEmpty.setBorder(new EmptyBorder(20, 0, 20, 0));
-            lblEmpty.setAlignmentX(Component.CENTER_ALIGNMENT);
-            tableContentPanel.add(lblEmpty);
-        } else {
-            for (int i = 0; i < pageData.size(); i++) {
-                String[] rowData = pageData.get(i);
-                boolean isLastRow = (i == pageData.size() - 1);
-                tableContentPanel.add(createDynamicTableRow(rowData, isLastRow));
-            }
-        }
-
-        tableContentPanel.add(Box.createVerticalGlue());
-        int startItem = (totalData == 0) ? 0 : offset + 1;
-        int endItem = Math.min(offset + entriesPerPage, totalData);
-        java.text.NumberFormat nf = java.text.NumberFormat.getInstance(Locale.forLanguageTag("id-ID"));
-        String info = String.format("Menampilkan %s sampai %s dari %s data", nf.format(startItem), nf.format(endItem),
-                nf.format(totalData));
-        lblPageInfo.setText(info);
-        btnPageNum.setText(String.valueOf(currentPage));
-        btnPrev.setEnabled(currentPage > 1);
-        btnNext.setEnabled(currentPage < totalPages);
+        JLabel lblLoading = new JLabel("Mencari data...");
+        lblLoading.setForeground(Theme.TEXT_SECONDARY);
+        lblLoading.setBorder(new EmptyBorder(20, 0, 20, 0));
+        lblLoading.setAlignmentX(Component.CENTER_ALIGNMENT);
+        tableContentPanel.add(lblLoading);
         tableContentPanel.revalidate();
         tableContentPanel.repaint();
+
+        new Thread(() -> {
+            int dbTotalData = dataProvider.getTotalRowCount(keyword);
+            int tempTotalPages = (int) Math.ceil((double) dbTotalData / entriesPerPage);
+            if (tempTotalPages == 0) {
+                tempTotalPages = 1;
+            }
+
+            int safeCurrentPage = currentPage;
+            if (safeCurrentPage > tempTotalPages) {
+                safeCurrentPage = tempTotalPages;
+            }
+            if (safeCurrentPage < 1) {
+                safeCurrentPage = 1;
+            }
+
+            int offset = (safeCurrentPage - 1) * entriesPerPage;
+            List<String[]> pageData = dataProvider.getPageData(entriesPerPage, offset, keyword);
+
+            final int finalTotalData = dbTotalData;
+            final int finalCurrentPage = safeCurrentPage;
+            final int finalTotalPages = tempTotalPages;
+
+            SwingUtilities.invokeLater(() -> {
+                totalData = finalTotalData;
+                currentPage = finalCurrentPage;
+                tableContentPanel.removeAll();
+
+                if (pageData.isEmpty()) {
+                    JLabel lblEmpty = new JLabel("Data tidak ditemukan");
+                    lblEmpty.setForeground(Theme.TEXT_SECONDARY);
+                    lblEmpty.setBorder(new EmptyBorder(20, 0, 20, 0));
+                    lblEmpty.setAlignmentX(Component.CENTER_ALIGNMENT);
+                    tableContentPanel.add(lblEmpty);
+                } else {
+                    for (int i = 0; i < pageData.size(); i++) {
+                        String[] rowData = pageData.get(i);
+                        boolean isLastRow = (i == pageData.size() - 1);
+                        tableContentPanel.add(createDynamicTableRow(rowData, isLastRow));
+                    }
+                }
+
+                tableContentPanel.add(Box.createVerticalGlue());
+                int startItem = (totalData == 0) ? 0 : offset + 1;
+                int endItem = Math.min(offset + entriesPerPage, totalData);
+                java.text.NumberFormat nf = java.text.NumberFormat.getInstance(Locale.forLanguageTag("id-ID"));
+                String info = String.format("Menampilkan %s sampai %s dari %s data", nf.format(startItem), nf.format(endItem), nf.format(totalData));
+
+                lblPageInfo.setText(info);
+                btnPageNum.setText(String.valueOf(currentPage));
+                btnPrev.setEnabled(currentPage > 1);
+                btnNext.setEnabled(currentPage < finalTotalPages);
+
+                tableContentPanel.revalidate();
+                tableContentPanel.repaint();
+            });
+        }).start();
     }
 
     private JPanel createDynamicTableRow(String[] rowData, boolean isLastRow) {
