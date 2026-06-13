@@ -25,11 +25,19 @@ public class ActivityTable extends RoundedPanel {
         void onViewHistory(String id, String name);
     }
 
+    public interface TableEditDeleteListener {
+
+        void onEdit(String id, String name);
+
+        void onDelete(String id, String name);
+    }
+
     private String title;
     private String[] headers;
     private int statusColIndex;
     private DataProvider dataProvider;
     private TableActionListener tableActionListener;
+    private TableEditDeleteListener tableEditDeleteListener; // Listener Baru
     private int currentPage = 1;
     private int entriesPerPage = 5;
     private int totalData = 0;
@@ -56,6 +64,10 @@ public class ActivityTable extends RoundedPanel {
 
     public void setTableActionListener(TableActionListener listener) {
         this.tableActionListener = listener;
+    }
+
+    public void setTableEditDeleteListener(TableEditDeleteListener listener) {
+        this.tableEditDeleteListener = listener;
     }
 
     private void buildUI() {
@@ -303,40 +315,29 @@ public class ActivityTable extends RoundedPanel {
                 if (addRightBorder) {
                     actionWrapper.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
                 }
+                
+                final String targetId;
+                if (rowData.length > cols) {
+                    targetId = rowData[rowData.length - 1];
+                } else if (rowData.length > 0) {
+                    targetId = rowData[0];
+                } else {
+                    targetId = "-";
+                }
 
-                RoundedPanel btnView = new RoundedPanel(10, Theme.BLUE_ACCENT);
-                btnView.setPreferredSize(new Dimension(34, 30));
-                btnView.setLayout(new BorderLayout());
-                btnView.setCursor(new Cursor(Cursor.HAND_CURSOR));
-                btnView.setToolTipText("Lihat Riwayat Transaksi");
-                JLabel lblIcon = new JLabel("👁", SwingConstants.CENTER);
-                lblIcon.setForeground(Color.WHITE);
-                lblIcon.setFont(new Font("Segoe UI Symbol", Font.PLAIN, 15));
-                btnView.add(lblIcon, BorderLayout.CENTER);
-                btnView.addMouseListener(new MouseAdapter() {
-                    @Override
-                    public void mouseEntered(MouseEvent e) {
-                        btnView.setBackground(Theme.BLUE_ACCENT.brighter());
-                        btnView.repaint();
-                    }
+                final String targetName = rowData.length > 1 ? rowData[1] : "-";
 
-                    @Override
-                    public void mouseExited(MouseEvent e) {
-                        btnView.setBackground(Theme.BLUE_ACCENT);
-                        btnView.repaint();
-                    }
+                // Tombol Mata (View)
+                if (tableActionListener != null) {
+                    actionWrapper.add(createActionButton("👁", Theme.BLUE_ACCENT, "Lihat Riwayat", () -> tableActionListener.onViewHistory(targetId, targetName)));
+                }
 
-                    @Override
-                    public void mouseClicked(MouseEvent e) {
-                        if (tableActionListener != null) {
-                            String targetId = rowData.length > 0 ? rowData[0] : "-";
-                            String targetName = rowData.length > 1 ? rowData[1] : "-";
-                            tableActionListener.onViewHistory(targetId, targetName);
-                        }
-                    }
-                });
+                // Tombol Edit & Delete
+                if (tableEditDeleteListener != null) {
+                    actionWrapper.add(createActionButton("✏", Theme.WARNING, "Edit Data", () -> tableEditDeleteListener.onEdit(targetId, targetName)));
+                    actionWrapper.add(createActionButton("🗑", Theme.RED, "Hapus Data", () -> tableEditDeleteListener.onDelete(targetId, targetName)));
+                }
 
-                actionWrapper.add(btnView);
                 row.add(actionWrapper);
             } else if (i == statusColIndex) {
                 Color badgeColor = Theme.TEXT_PRIMARY;
@@ -372,6 +373,45 @@ public class ActivityTable extends RoundedPanel {
             }
         }
         return row;
+    }
+
+    private RoundedPanel createActionButton(String icon, Color hoverColor, String tooltip, Runnable onClick) {
+        RoundedPanel btn = new RoundedPanel(8, Theme.CARD);
+        btn.setPreferredSize(new Dimension(32, 28));
+        btn.setLayout(new BorderLayout());
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        btn.setToolTipText(tooltip);
+        btn.setBorder(BorderFactory.createLineBorder(Theme.BORDER, 1));
+
+        JLabel lblIcon = new JLabel(icon, SwingConstants.CENTER);
+        lblIcon.setForeground(Theme.TEXT_SECONDARY);
+        lblIcon.setFont(new Font("Segoe UI Emoji", Font.PLAIN, 13));
+        btn.add(lblIcon, BorderLayout.CENTER);
+        btn.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                btn.setBackground(hoverColor);
+                btn.setBorder(BorderFactory.createLineBorder(hoverColor, 1));
+                lblIcon.setForeground(Color.WHITE);
+                btn.repaint();
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+                btn.setBackground(Theme.CARD);
+                btn.setBorder(BorderFactory.createLineBorder(Theme.BORDER, 1));
+                lblIcon.setForeground(Theme.TEXT_SECONDARY);
+                btn.repaint();
+            }
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (onClick != null) {
+                    onClick.run();
+                }
+            }
+        });
+        return btn;
     }
 
     private JLabel createTableCell(String text, Color color, boolean addRightBorder) {

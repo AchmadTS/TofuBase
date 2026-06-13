@@ -144,9 +144,7 @@ public class BahanBakuDAO {
     }
 
     public List<String> getSatuanList() {
-        List<String> satuanList = new ArrayList<>(java.util.Arrays.asList(
-                "kg", "liter", "pcs", "gram", "ml", "bungkus"
-        ));
+        List<String> satuanList = new ArrayList<>(java.util.Arrays.asList("kg", "liter", "pcs", "gram", "ml", "bungkus"));
         String query = "SELECT DISTINCT satuan FROM bahan_baku WHERE satuan IS NOT NULL AND satuan != ''";
         try {
             Connection conn = DatabaseConfig.getKoneksi();
@@ -165,7 +163,7 @@ public class BahanBakuDAO {
         return satuanList;
     }
 
-    public boolean simpanAtauUpdateBahan(String nama, int idSupplier, String satuan, double qty, double minStok, double hargaBeli) {
+    public boolean simpanAtauUpdateBahan(String nama, int idSupplier, String satuan, double stok, double minStok, double hargaBeli) {
         String normalizedInput = nama.replaceAll("\\s+", "").toLowerCase();
         String checkQuery = "SELECT id_bahan, stok FROM bahan_baku WHERE LOWER(REPLACE(nama, ' ', '')) = '" + normalizedInput + "'";
         try {
@@ -176,7 +174,7 @@ public class BahanBakuDAO {
             if (rs.next()) {
                 int idBahan = rs.getInt("id_bahan");
                 String updateQuery = "UPDATE bahan_baku SET "
-                        + "stok = stok + " + qty + ", "
+                        + "stok = stok + " + stok + ", "
                         + "min_stok = " + minStok + ", "
                         + "harga_beli = " + hargaBeli + ", "
                         + "satuan = '" + satuan + "', "
@@ -184,7 +182,7 @@ public class BahanBakuDAO {
                         + "WHERE id_bahan = " + idBahan;
                 stmt.executeUpdate(updateQuery);
             } else {
-                String insertQuery = "INSERT INTO bahan_baku (nama, id_supplier, satuan, stok, min_stok, harga_beli) " + "VALUES ('" + nama + "', " + idSupplier + ", '" + satuan + "', " + qty + ", " + minStok + ", " + hargaBeli + ")";
+                String insertQuery = "INSERT INTO bahan_baku (nama, id_supplier, satuan, stok, min_stok, harga_beli) " + "VALUES ('" + nama + "', " + idSupplier + ", '" + satuan + "', " + stok + ", " + minStok + ", " + hargaBeli + ")";
                 stmt.executeUpdate(insertQuery);
             }
             return true;
@@ -210,5 +208,82 @@ public class BahanBakuDAO {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public int getRiwayatTotalRows(String namaBahan, String keyword) {
+        int total = 0;
+        String query = "SELECT COUNT(*) FROM bahan_baku WHERE LOWER(nama) = LOWER(?) " + "AND LOWER(id_supplier) LIKE LOWER(?)";
+        try (java.sql.Connection conn = utils.DatabaseConfig.getKoneksi(); // Pastikan utils koneksi Anda benar
+                 java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, namaBahan);
+            ps.setString(2, "%" + keyword + "%");
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    total = rs.getInt(1);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return total;
+    }
+
+    public List<String[]> getRiwayatPageData(int limit, int offset, String namaBahan, String keyword) {
+        List<String[]> list = new java.util.ArrayList<>();
+        String query = "SELECT id_bahan, created_at, nama, id_supplier, stok, satuan, harga_beli "
+                + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?) "
+                + "AND LOWER(id_supplier) LIKE LOWER(?) "
+                + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        try (java.sql.Connection conn = utils.DatabaseConfig.getKoneksi(); java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, namaBahan);
+            ps.setString(2, "%" + keyword + "%");
+            ps.setInt(3, limit);
+            ps.setInt(4, offset);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                while (rs.next()) {
+                    String[] row = new String[8];
+                    row[0] = rs.getDate("created_at") != null ? rs.getDate("created_at").toString() : "-";
+                    row[1] = rs.getString("nama");
+                    row[2] = rs.getString("id_supplier");
+                    row[3] = nf.format(rs.getDouble("stok"));
+                    row[4] = rs.getString("satuan");
+
+                    double totalNilai = rs.getDouble("stok") * rs.getDouble("harga_beli");
+                    row[5] = "Rp " + nf.format(totalNilai);
+                    row[6] = "";
+                    row[7] = String.valueOf(rs.getInt("id_bahan"));
+
+                    list.add(row);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public Map<String, String> getRiwayatTopCardsData(String namaBahan) {
+        Map<String, String> result = new java.util.HashMap<>();
+        String query = "SELECT COUNT(*) as total_transaksi, SUM(stok * harga_beli) as nilai_pembelian, SUM(stok) as stok_masuk " + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?)";
+        try (java.sql.Connection conn = utils.DatabaseConfig.getKoneksi(); java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, namaBahan);
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                    result.put("total_transaksi", nf.format(rs.getInt("total_transaksi")));
+                    double nilai = rs.getDouble("nilai_pembelian");
+                    if (nilai >= 1_000_000) {
+                        result.put("nilai_pembelian", "Rp " + String.format("%.1f jt", nilai / 1_000_000).replace(".", ","));
+                    } else {
+                        result.put("nilai_pembelian", "Rp " + nf.format(nilai));
+                    }
+                    result.put("stok_terpakai", nf.format(rs.getDouble("stok_masuk")) + " satuan");
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 }

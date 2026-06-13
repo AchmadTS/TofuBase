@@ -146,7 +146,9 @@ public class BahanBaku extends JPanel {
         });
 
         table.setTableActionListener((id, name) -> {
-            JOptionPane.showMessageDialog(this, "Membuka Riwayat Transaksi untuk:\n\nBahan: " + name + "\nID: " + id, "Informasi Sistem", JOptionPane.INFORMATION_MESSAGE);
+            Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(BahanBaku.this);
+            ModalRiwayat modal = new ModalRiwayat(parentFrame, id, name);
+            modal.setVisible(true);
         });
 
         return table;
