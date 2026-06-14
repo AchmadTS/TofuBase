@@ -18,15 +18,43 @@ import java.util.Map;
 
 public class BahanBaku extends JPanel {
 
+    private static final String TITLE = "Bahan Baku";
+    private static final String BTN_EXPORT = "Export PDF";
+    private static final String BTN_ADD = "+ Tambah Data";
+    private static final String CARD_ASET_TITLE = "NILAI ASET STOK";
+    private static final String CARD_ASET_UNIT = "Jt";
+    private static final String CARD_KEDELAI_TITLE = "STOK KEDELAI";
+    private static final String CARD_KEDELAI_UNIT = "kg";
+    private static final String CARD_PEMASOK_TITLE = "PEMASOK AKTIF";
+    private static final String CARD_PEMASOK_UNIT = "orang";
+    private static final int SCROLL_SPEED = 16;
+    private static final int TIMER_DELAY_MS = 60_000;
     private final BahanBakuDAO bahanBakuDAO = new BahanBakuDAO();
+    private JLabel lblTotalAset, lblStatusAset;
+    private JLabel lblStokKedelai, lblStatusKedelai;
+    private JLabel lblPemasok, lblStatusPemasok;
+    private ActivityTable tableBahan;
 
     public BahanBaku(String userName, String userRole) {
         setLayout(new BorderLayout());
         setBackground(Theme.BG);
-        add(createMainContent(), BorderLayout.CENTER);
+        initializeDynamicComponents();
+        add(buildMainContent(), BorderLayout.CENTER);
+        refreshData();
     }
 
-    private JPanel createMainContent() {
+    private void initializeDynamicComponents() {
+        lblTotalAset = createAnimatedLabel();
+        lblStatusAset = createStatusLabel("Total nilai gudang", Theme.TEXT_SECONDARY);
+
+        lblStokKedelai = createAnimatedLabel();
+        lblStatusKedelai = createStatusLabel("Menghitung...", Theme.TEXT_SECONDARY);
+
+        lblPemasok = createAnimatedLabel();
+        lblStatusPemasok = createStatusLabel("Terdaftar unik", Theme.TEXT_SECONDARY);
+    }
+
+    private JPanel buildMainContent() {
         JPanel mainContent = new JPanel(new BorderLayout());
         mainContent.setBackground(Theme.BG);
         mainContent.add(buildHeader(), BorderLayout.NORTH);
@@ -40,15 +68,19 @@ public class BahanBaku extends JPanel {
         container.add(Box.createVerticalStrut(20));
         container.add(buildBahanTable());
 
-        JScrollPane mainScroll = new JScrollPane(container);
-        mainScroll.setBorder(null);
-        mainScroll.getViewport().setBackground(Theme.BG);
-        mainScroll.getVerticalScrollBar().setUnitIncrement(16);
-        mainScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-        mainScroll.getHorizontalScrollBar().setUnitIncrement(16);
-        mainScroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
-        mainContent.add(mainScroll, BorderLayout.CENTER);
+        mainContent.add(buildScrollPane(container), BorderLayout.CENTER);
         return mainContent;
+    }
+
+    private JScrollPane buildScrollPane(JPanel content) {
+        JScrollPane scroll = new JScrollPane(content);
+        scroll.setBorder(null);
+        scroll.getViewport().setBackground(Theme.BG);
+        scroll.getVerticalScrollBar().setUnitIncrement(SCROLL_SPEED);
+        scroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
+        scroll.getHorizontalScrollBar().setUnitIncrement(SCROLL_SPEED);
+        scroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
+        return scroll;
     }
 
     private JPanel buildHeader() {
@@ -56,9 +88,15 @@ public class BahanBaku extends JPanel {
         header.setBackground(Theme.BG);
         header.setBorder(new EmptyBorder(20, 30, 10, 30));
 
+        header.add(buildHeaderTitlePanel(), BorderLayout.WEST);
+        header.add(buildHeaderActionPanel(), BorderLayout.EAST);
+        return header;
+    }
+
+    private JPanel buildHeaderTitlePanel() {
         JPanel titlePanel = new JPanel(new GridLayout(2, 1));
         titlePanel.setBackground(Theme.BG);
-        JLabel headerTitle = new JLabel("Bahan Baku");
+        JLabel headerTitle = new JLabel(TITLE);
         headerTitle.setFont(new Font("SansSerif", Font.BOLD, 28));
         headerTitle.setForeground(Theme.TEXT_PRIMARY);
 
@@ -66,35 +104,19 @@ public class BahanBaku extends JPanel {
         JLabel headerDate = new JLabel(LocalDate.now().format(formatter));
         headerDate.setFont(new Font("SansSerif", Font.PLAIN, 14));
         headerDate.setForeground(Theme.TEXT_SECONDARY);
-        new Timer(60_000, e -> headerDate.setText(LocalDate.now().format(formatter))).start();
-
+        new Timer(TIMER_DELAY_MS, e -> headerDate.setText(LocalDate.now().format(formatter))).start();
         titlePanel.add(headerTitle);
         titlePanel.add(headerDate);
+        return titlePanel;
+    }
 
+    private JPanel buildHeaderActionPanel() {
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 0));
         buttonPanel.setBackground(Theme.BG);
-        RoundedPanel btnExport = createHeaderButton("Export PDF", false);
-        RoundedPanel btnAdd = createHeaderButton("+ Tambah Data", true);
-        btnAdd.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(BahanBaku.this);
-                ModalTambahBahan modal = new ModalTambahBahan(parentFrame);
-                modal.setVisible(true);
-                if (modal.isSaved()) {
-                    removeAll();
-                    add(createMainContent(), BorderLayout.CENTER);
-                    revalidate();
-                    repaint();
-                }
-            }
-        });
+        buttonPanel.add(createHeaderButton(BTN_EXPORT, false, this::handleExportPDF));
+        buttonPanel.add(createHeaderButton(BTN_ADD, true, this::handleAddData));
 
-        buttonPanel.add(btnExport);
-        buttonPanel.add(btnAdd);
-        header.add(titlePanel, BorderLayout.WEST);
-        header.add(buttonPanel, BorderLayout.EAST);
-        return header;
+        return buttonPanel;
     }
 
     private JPanel buildTopCards() {
@@ -102,38 +124,58 @@ public class BahanBaku extends JPanel {
         topCardsPanel.setBackground(Theme.BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
-        JLabel lblTotalAset = createAnimatedLabel();
-        JLabel lblStatusAset = createStatusLabel("Total nilai gudang", Theme.TEXT_SECONDARY);
+        topCardsPanel.add(createStatCard(CARD_ASET_TITLE, lblTotalAset, CARD_ASET_UNIT, lblStatusAset));
+        topCardsPanel.add(createStatCard(CARD_KEDELAI_TITLE, lblStokKedelai, CARD_KEDELAI_UNIT, lblStatusKedelai));
+        topCardsPanel.add(createStatCard(CARD_PEMASOK_TITLE, lblPemasok, CARD_PEMASOK_UNIT, lblStatusPemasok));
 
-        JLabel lblStokKedelai = createAnimatedLabel();
-        JLabel lblStatusKedelai = createStatusLabel("Menghitung...", Theme.TEXT_SECONDARY);
-
-        JLabel lblPemasok = createAnimatedLabel();
-        JLabel lblStatusPemasok = createStatusLabel("Terdaftar unik", Theme.TEXT_SECONDARY);
-
-        topCardsPanel.add(createStatCard("NILAI ASET STOK", lblTotalAset, "Jt", lblStatusAset));
-        topCardsPanel.add(createStatCard("STOK KEDELAI", lblStokKedelai, "kg", lblStatusKedelai));
-        topCardsPanel.add(createStatCard("PEMASOK AKTIF", lblPemasok, "orang", lblStatusPemasok));
-
-        new Thread(() -> {
-            Map<String, String> data = bahanBakuDAO.getTopCardsData();
-            String colorStr = data.getOrDefault("status_ked_color", "GRAY");
-            Color statusColor = "RED".equals(colorStr) ? Theme.RED : ("WARNING".equals(colorStr) ? Theme.WARNING : Theme.GREEN);
-
-            SwingUtilities.invokeLater(() -> {
-                lblTotalAset.setText(data.getOrDefault("aset", "0"));
-                lblStokKedelai.setText(data.getOrDefault("kedelai", "0"));
-                lblStatusKedelai.setText(data.getOrDefault("status_ked_txt", "Tidak ada data"));
-                lblStatusKedelai.setForeground(statusColor);
-                lblPemasok.setText(data.getOrDefault("pemasok", "0"));
-            });
-        }).start();
         return topCardsPanel;
     }
 
+    private void fetchTopCardsData() {
+        lblStokKedelai.setText("...");
+
+        new SwingWorker<Map<String, String>, Void>() {
+            @Override
+            protected Map<String, String> doInBackground() {
+                return bahanBakuDAO.getTopCardsData();
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    Map<String, String> data = get();
+                    String colorStr = data.getOrDefault("status_ked_color", "GRAY");
+                    Color statusColor = resolveStatusColor(colorStr);
+
+                    lblTotalAset.setText(data.getOrDefault("aset", "0"));
+                    lblStokKedelai.setText(data.getOrDefault("kedelai", "0"));
+                    lblStatusKedelai.setText(data.getOrDefault("status_ked_txt", "Tidak ada data"));
+                    lblStatusKedelai.setForeground(statusColor);
+                    lblPemasok.setText(data.getOrDefault("pemasok", "0"));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    lblStatusKedelai.setText("Gagal memuat data");
+                }
+            }
+        }.execute();
+    }
+
+    private Color resolveStatusColor(String colorStr) {
+        switch (colorStr) {
+            case "RED":
+                return Theme.RED;
+            case "WARNING":
+                return Theme.WARNING;
+            case "GREEN":
+                return Theme.GREEN;
+            default:
+                return Theme.TEXT_SECONDARY;
+        }
+    }
+
     private ActivityTable buildBahanTable() {
-        String[] bahanHeaders = {"ID", "Nama Bahan", "Stok Tersedia", "Satuan", "Rata-rata harga Beli", "Min. Stok", "Status Stok", "Aksi"};
-        ActivityTable table = new ActivityTable("Daftar Stok Bahan Baku", bahanHeaders, 6, new ActivityTable.DataProvider() {
+        String[] bahanHeaders = {"ID", "Nama Bahan", "Stok Tersedia", "Satuan", "Harga Rata-rata", "Min. Stok", "Status Stok", "Aksi"};
+        tableBahan = new ActivityTable("Daftar Stok Bahan Baku", bahanHeaders, 6, new ActivityTable.DataProvider() {
             @Override
             public int getTotalRowCount(String keyword) {
                 return bahanBakuDAO.getTableTotalRows(keyword);
@@ -145,16 +187,39 @@ public class BahanBaku extends JPanel {
             }
         });
 
-        table.setTableActionListener((id, name) -> {
-            Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(BahanBaku.this);
-            ModalRiwayat modal = new ModalRiwayat(parentFrame, id, name);
-            modal.setVisible(true);
-        });
-
-        return table;
+        tableBahan.setTableActionListener(this::handleViewHistory);
+        return tableBahan;
     }
 
-    private RoundedPanel createHeaderButton(String text, boolean isPrimary) {
+    private void handleExportPDF() {
+        JOptionPane.showMessageDialog(this, "Fitur Export PDF sedang dalam pengembangan.", "Info", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void handleAddData() {
+        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
+        ModalTambahBahan modal = new ModalTambahBahan(parentFrame);
+        modal.setVisible(true);
+
+        if (modal.isSaved()) {
+            refreshData();
+        }
+    }
+
+    private void handleViewHistory(String id, String name) {
+        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
+        ModalRiwayat modal = new ModalRiwayat(parentFrame, id, name);
+        modal.setVisible(true);
+        refreshData();
+    }
+
+    private void refreshData() {
+        fetchTopCardsData();
+        if (tableBahan != null) {
+            tableBahan.updateTableModel();
+        }
+    }
+
+    private RoundedPanel createHeaderButton(String text, boolean isPrimary, Runnable action) {
         Color defaultBg = isPrimary ? Theme.BLUE_ACCENT : Theme.BG;
         Color hoverBg = isPrimary ? Theme.BLUE_ACCENT.darker() : Theme.CARD;
         Color borderColor = isPrimary ? Theme.BLUE_ACCENT : Theme.BORDER;
@@ -170,6 +235,11 @@ public class BahanBaku extends JPanel {
         label.setFont(new Font("SansSerif", Font.BOLD, 12));
         panel.add(label, BorderLayout.CENTER);
         panel.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                action.run();
+            }
+
             @Override
             public void mouseEntered(MouseEvent e) {
                 panel.setBackground(hoverBg);
@@ -188,7 +258,6 @@ public class BahanBaku extends JPanel {
                 panel.repaint();
             }
         });
-
         return panel;
     }
 
@@ -221,13 +290,10 @@ public class BahanBaku extends JPanel {
         valuePanel.setBackground(Theme.CARD);
         valuePanel.setOpaque(false);
         valuePanel.setAlignmentX(Component.CENTER_ALIGNMENT);
-
+        JLabel lblUnit = new JLabel(unit);
+        lblUnit.setForeground(Theme.TEXT_SECONDARY);
         valuePanel.add(lblValue);
-        valuePanel.add(new JLabel(unit) {
-            {
-                setForeground(Theme.TEXT_SECONDARY);
-            }
-        });
+        valuePanel.add(lblUnit);
 
         card.add(lblTitle);
         card.add(Box.createVerticalStrut(10));

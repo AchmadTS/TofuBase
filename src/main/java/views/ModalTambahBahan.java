@@ -4,6 +4,7 @@ import dao.BahanBakuDAO;
 import components.RoundedPanel;
 import components.ModernScrollBarUI;
 import utils.Theme;
+
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -145,6 +146,47 @@ public class ModalTambahBahan extends JDialog {
         return section;
     }
 
+    private JPanel buildSatuanGroup() {
+        JPanel pnlSatuan = new JPanel();
+        pnlSatuan.setLayout(new BoxLayout(pnlSatuan, BoxLayout.Y_AXIS));
+        pnlSatuan.setOpaque(false);
+        pnlSatuan.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        pnlSatuan.add(createRequiredLabel("SATUAN"));
+
+        satuanInputWrapper = new JPanel(new CardLayout());
+        satuanInputWrapper.setOpaque(false);
+        satuanInputWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        satuanInputWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+
+        cbSatuan = new JComboBox<>();
+        styleComboBox(cbSatuan);
+        txtSatuanBaru = createRawTextField(PLACEHOLDER_SATUAN);
+
+        satuanInputWrapper.add(wrapInput(cbSatuan), "COMBO");
+        satuanInputWrapper.add(wrapInput(txtSatuanBaru), "TEXT");
+
+        JPanel toggleContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        toggleContainer.setOpaque(false);
+        toggleContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        lblToggleSatuan = new JLabel();
+        lblToggleSatuan.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        lblToggleSatuan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblToggleSatuan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                toggleSatuanMode();
+            }
+        });
+
+        updateToggleSatuanLabel();
+        toggleContainer.add(lblToggleSatuan);
+        pnlSatuan.add(satuanInputWrapper);
+        pnlSatuan.add(toggleContainer);
+        return pnlSatuan;
+    }
+
     private JPanel buildStockAndPriceSection() {
         JPanel section = new JPanel();
         section.setLayout(new BoxLayout(section, BoxLayout.Y_AXIS));
@@ -209,9 +251,7 @@ public class ModalTambahBahan extends JDialog {
         new SwingWorker<DropdownDataDto, Void>() {
             @Override
             protected DropdownDataDto doInBackground() {
-                Map<Integer, String> suppliers = bahanDAO.getSupplierList();
-                List<String> satuans = bahanDAO.getSatuanList();
-                return new DropdownDataDto(suppliers, satuans);
+                return new DropdownDataDto(bahanDAO.getSupplierList(), bahanDAO.getSatuanList());
             }
 
             @Override
@@ -268,18 +308,15 @@ public class ModalTambahBahan extends JDialog {
     }
 
     private void applyAutofill(Map<String, Object> detail) {
-        String satuan = (String) detail.get("satuan");
-        double minStok = (Double) detail.get("min_stok");
-
         if (isSatuanBaruMode) {
             toggleSatuanMode();
         }
 
-        cbSatuan.setSelectedItem(satuan);
+        cbSatuan.setSelectedItem((String) detail.get("satuan"));
         cbSatuan.setEnabled(false);
 
         java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
-        txtMinStok.setText(formatter.format(minStok));
+        txtMinStok.setText(formatter.format((Double) detail.get("min_stok")));
         txtMinStok.setEnabled(false);
 
         if (lblToggleSatuan != null) {
@@ -334,28 +371,18 @@ public class ModalTambahBahan extends JDialog {
             }
         }
 
-        String rawQty = txtQty.getText().replaceAll("[^\\d]", "");
-        String rawMin = txtMinStok.getText().replaceAll("[^\\d]", "");
-        String rawHarga = txtHarga.getText().replaceAll("[^\\d]", "");
+        validateNumericInput(txtQty.getText(), "QTY (Stok)");
+        validateNumericInput(txtMinStok.getText(), "Minimal Stok");
+        validateNumericInput(txtHarga.getText(), "Harga Beli");
+    }
 
-        if (rawQty.isEmpty()) {
-            throw new IllegalArgumentException("QTY (Stok) harus diisi dengan angka!");
+    private void validateNumericInput(String text, String fieldName) {
+        String rawNumber = text.replaceAll("[^\\d]", "");
+        if (rawNumber.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " harus diisi dengan angka!");
         }
-        if (rawMin.isEmpty()) {
-            throw new IllegalArgumentException("Minimal Stok harus diisi dengan angka!");
-        }
-        if (rawHarga.isEmpty()) {
-            throw new IllegalArgumentException("Harga Beli harus diisi dengan angka!");
-        }
-
-        if (Double.parseDouble(rawQty) <= 0) {
-            throw new IllegalArgumentException("QTY (Stok) harus lebih dari 0!");
-        }
-        if (Double.parseDouble(rawMin) <= 0) {
-            throw new IllegalArgumentException("Minimal Stok harus lebih dari 0!");
-        }
-        if (Double.parseDouble(rawHarga) <= 0) {
-            throw new IllegalArgumentException("Harga Beli harus lebih dari 0!");
+        if (Double.parseDouble(rawNumber) <= 0) {
+            throw new IllegalArgumentException(fieldName + " harus lebih dari 0!");
         }
     }
 
@@ -368,11 +395,11 @@ public class ModalTambahBahan extends JDialog {
         double min = Double.parseDouble(txtMinStok.getText().replaceAll("[^\\d]", ""));
         double harga = Double.parseDouble(txtHarga.getText().replaceAll("[^\\d]", ""));
 
-        if (bahanDAO.simpanAtauUpdateBahan(nama, sup.getKey(), satuan, qty, min, harga)) {
+        if (bahanDAO.insertBahanBaru(nama, sup.getKey(), satuan, qty, min, harga)) {
             isSaved = true;
             dispose();
         } else {
-            throw new RuntimeException("Gagal menyimpan data ke database.");
+            throw new RuntimeException("Gagal menyisipkan data transaksi ke database.");
         }
     }
 
@@ -392,48 +419,6 @@ public class ModalTambahBahan extends JDialog {
                 checkTimer.restart();
             }
         });
-    }
-
-    private JPanel buildSatuanGroup() {
-        JPanel pnlSatuan = new JPanel();
-        pnlSatuan.setLayout(new BoxLayout(pnlSatuan, BoxLayout.Y_AXIS));
-        pnlSatuan.setOpaque(false);
-        pnlSatuan.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        pnlSatuan.add(createRequiredLabel("SATUAN"));
-
-        satuanInputWrapper = new JPanel(new CardLayout());
-        satuanInputWrapper.setOpaque(false);
-        satuanInputWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-        satuanInputWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-
-        cbSatuan = new JComboBox<>();
-        styleComboBox(cbSatuan);
-        txtSatuanBaru = createRawTextField(PLACEHOLDER_SATUAN);
-
-        satuanInputWrapper.add(wrapInput(cbSatuan), "COMBO");
-        satuanInputWrapper.add(wrapInput(txtSatuanBaru), "TEXT");
-
-        JPanel toggleContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        toggleContainer.setOpaque(false);
-        toggleContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        lblToggleSatuan = new JLabel();
-        lblToggleSatuan.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        lblToggleSatuan.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        lblToggleSatuan.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent e) {
-                toggleSatuanMode();
-            }
-        });
-        updateToggleSatuanLabel();
-
-        toggleContainer.add(lblToggleSatuan);
-        pnlSatuan.add(satuanInputWrapper);
-        pnlSatuan.add(toggleContainer);
-
-        return pnlSatuan;
     }
 
     private void toggleSatuanMode() {
@@ -787,8 +772,10 @@ public class ModalTambahBahan extends JDialog {
     }
 
     private static class DropdownDataDto {
+
         final Map<Integer, String> suppliers;
         final List<String> satuans;
+
         DropdownDataDto(Map<Integer, String> suppliers, List<String> satuans) {
             this.suppliers = suppliers;
             this.satuans = satuans;

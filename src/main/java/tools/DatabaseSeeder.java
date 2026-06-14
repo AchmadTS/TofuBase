@@ -33,19 +33,18 @@ public class DatabaseSeeder {
         "userSeeder.sql",
         "supplierSeeder.sql",
         "pelangganSeeder.sql",
-        "produkSeeder.sql",
+        //        "produkSeeder.sql",
         "adminSeeder.sql",
         "ownerSeeder.sql",
-        "staffSeeder.sql",
-        "bahanBakuSeeder.sql",
-        "produksiSeeder.sql",
-        "recordProduksiSeeder.sql",
-        "penjualanSeeder.sql",
-        "recordPenjualanSeeder.sql",
-        "pemasukanSeeder.sql",
-        "pengeluaranSeeder.sql",
-        "laporanKeuanganSeeder.sql",
-        "inventarisSeeder.sql"
+        "staffSeeder.sql", //        "bahanBakuSeeder.sql",
+    //        "produksiSeeder.sql",
+    //        "recordProduksiSeeder.sql",
+    //        "penjualanSeeder.sql",
+    //        "recordPenjualanSeeder.sql",
+    //        "pemasukanSeeder.sql",
+    //        "pengeluaranSeeder.sql",
+    //        "laporanKeuanganSeeder.sql",
+    //        "inventarisSeeder.sql"
     };
 
     public static void main(String[] args) {
