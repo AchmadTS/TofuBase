@@ -82,7 +82,8 @@ public class ModalEditBahan extends JDialog {
     }
 
     private void setupEscapeKey() {
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"), "closeModal");
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"),
+                "closeModal");
         getRootPane().getActionMap().put("closeModal", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -267,9 +268,13 @@ public class ModalEditBahan extends JDialog {
             return;
         }
 
-        String currentSatuan = isSatuanBaruMode ? txtSatuanBaru.getText().trim() : (cbSatuan.getSelectedItem() != null ? cbSatuan.getSelectedItem().toString() : "");
-        if (!currentSatuan.equals(originalSatuan) && !currentSatuan.equals("Pilih satuan...") && !currentSatuan.equals("Ketik satuan baru...")) {
-            int choice = JOptionPane.showConfirmDialog(this, "Mengubah satuan akan membuat data baru di Data Master. Lanjutkan?", "Konfirmasi Perubahan Satuan", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+        String currentSatuan = isSatuanBaruMode ? txtSatuanBaru.getText().trim()
+                : (cbSatuan.getSelectedItem() != null ? cbSatuan.getSelectedItem().toString() : "");
+        if (!currentSatuan.equals(originalSatuan) && !currentSatuan.equals("Pilih satuan...")
+                && !currentSatuan.equals("Ketik satuan baru...")) {
+            int choice = JOptionPane.showConfirmDialog(this,
+                    "Mengubah satuan akan membuat data baru di Data Master. Lanjutkan?", "Konfirmasi Perubahan Satuan",
+                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
             if (choice == JOptionPane.OK_OPTION) {
                 alertSatuanShown = true;
             } else {
@@ -306,7 +311,9 @@ public class ModalEditBahan extends JDialog {
 
                     String current = txtMinStok.getText().trim();
                     if (!current.equals(originalMinStok) && !current.isEmpty() && !current.equals("Memuat...")) {
-                        int choice = JOptionPane.showConfirmDialog(ModalEditBahan.this, "MIN STOK yang disimpan akan menjadi batas baru di Data Master. Lanjutkan?", "Konfirmasi Min Stok", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
+                        int choice = JOptionPane.showConfirmDialog(ModalEditBahan.this,
+                                "MIN STOK yang disimpan akan menjadi batas baru di Data Master. Lanjutkan?",
+                                "Konfirmasi Min Stok", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
                         if (choice == JOptionPane.OK_OPTION) {
                             alertMinStokShown = true;
                         } else {
@@ -375,7 +382,7 @@ public class ModalEditBahan extends JDialog {
                     originalSatuan = data.getSatuan();
                     cbSatuan.setSelectedItem(originalSatuan);
 
-                    java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                    java.text.NumberFormat nf = java.text.NumberFormat.getInstance(java.util.Locale.of("id", "ID"));
 
                     txtQty.setText(nf.format(data.getStok()));
                     txtQty.setForeground(Theme.TEXT_PRIMARY);
@@ -420,7 +427,8 @@ public class ModalEditBahan extends JDialog {
                         cbSatuan.setSelectedItem(satuan);
                         cbSatuan.setEnabled(false);
 
-                        java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                        java.text.NumberFormat formatter = java.text.NumberFormat
+                                .getInstance(java.util.Locale.of("id", "ID"));
                         txtMinStok.setText(formatter.format(minStok));
                         txtMinStok.setEnabled(false);
 
@@ -445,7 +453,8 @@ public class ModalEditBahan extends JDialog {
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Peringatan Validasi", JOptionPane.WARNING_MESSAGE);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Terjadi kesalahan sistem: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan sistem: " + ex.getMessage(), "Error",
+                    JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
     }
@@ -578,14 +587,16 @@ public class ModalEditBahan extends JDialog {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
                 int key = e.getKeyCode();
-                if (key == java.awt.event.KeyEvent.VK_LEFT || key == java.awt.event.KeyEvent.VK_RIGHT || key == java.awt.event.KeyEvent.VK_UP || key == java.awt.event.KeyEvent.VK_DOWN) {
+                if (key == java.awt.event.KeyEvent.VK_LEFT || key == java.awt.event.KeyEvent.VK_RIGHT
+                        || key == java.awt.event.KeyEvent.VK_UP || key == java.awt.event.KeyEvent.VK_DOWN) {
                     return;
                 }
                 String rawText = txt.getText().replaceAll("[^\\d]", "");
                 if (!rawText.isEmpty()) {
                     try {
                         long number = Long.parseLong(rawText);
-                        java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                        java.text.NumberFormat formatter = java.text.NumberFormat
+                                .getInstance(java.util.Locale.of("id", "ID"));
                         txt.setText(prefix + formatter.format(number));
                     } catch (NumberFormatException ignored) {
                     }
@@ -619,7 +630,9 @@ public class ModalEditBahan extends JDialog {
 
     private JLabel createRequiredLabel(String title) {
         String hexColor = String.format("#%06x", (Theme.TEXT_SECONDARY.getRGB() & 0xFFFFFF));
-        String titleHtml = "<html><span style='color:" + hexColor + "; font-family:SansSerif; font-size:10px; font-weight:bold;'>" + title + "</span> <span style='color:#FF4747;'>*</span></html>";
+        String titleHtml = "<html><span style='color:" + hexColor
+                + "; font-family:SansSerif; font-size:10px; font-weight:bold;'>" + title
+                + "</span> <span style='color:#FF4747;'>*</span></html>";
         JLabel lblTitle = new JLabel(titleHtml);
         lblTitle.setBorder(new EmptyBorder(0, 0, 5, 0));
         lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -770,8 +783,10 @@ public class ModalEditBahan extends JDialog {
         cb.setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 5));
         cb.setRenderer(new DefaultListCellRenderer() {
             @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
+                    boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected,
+                        cellHasFocus);
                 label.setBackground(isSelected ? Theme.BORDER : Theme.CARD);
                 label.setForeground(Theme.TEXT_PRIMARY);
                 label.setOpaque(true);
@@ -785,7 +800,8 @@ public class ModalEditBahan extends JDialog {
                 BasicComboPopup popup = new BasicComboPopup(comboBox) {
                     @Override
                     protected JScrollPane createScroller() {
-                        JScrollPane scroller = new JScrollPane(list, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+                        JScrollPane scroller = new JScrollPane(list, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
                         scroller.getVerticalScrollBar().setUI(new ModernScrollBarUI());
                         scroller.getVerticalScrollBar().setUnitIncrement(16);
                         scroller.setBorder(BorderFactory.createLineBorder(Theme.BORDER, 1));
@@ -804,8 +820,10 @@ public class ModalEditBahan extends JDialog {
 
             @Override
             public void paintCurrentValue(Graphics g, Rectangle bounds, boolean hasFocus) {
-                ListCellRenderer renderer = comboBox.getRenderer();
-                Component c = renderer.getListCellRendererComponent(listBox, comboBox.getSelectedItem(), -1, false, false);
+                @SuppressWarnings("unchecked")
+                ListCellRenderer<? super Object> renderer = (ListCellRenderer<? super Object>) comboBox.getRenderer();
+                Component c = renderer.getListCellRendererComponent(listBox, comboBox.getSelectedItem(), -1, false,
+                        false);
                 c.setFont(comboBox.getFont());
                 c.setForeground(comboBox.isEnabled() ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY);
                 c.setBackground(Theme.CARD);
@@ -821,7 +839,7 @@ public class ModalEditBahan extends JDialog {
                         g2.setColor(comboBox.isEnabled() ? Theme.TEXT_SECONDARY : new Color(138, 146, 166, 100));
                         g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                         int w = getWidth(), h = getHeight();
-                        int[] x = {w / 2 - 4, w / 2, w / 2 + 4}, y = {h / 2 - 2, h / 2 + 3, h / 2 - 2};
+                        int[] x = { w / 2 - 4, w / 2, w / 2 + 4 }, y = { h / 2 - 2, h / 2 + 3, h / 2 - 2 };
                         g2.drawPolyline(x, y, 3);
                         g2.dispose();
                     }

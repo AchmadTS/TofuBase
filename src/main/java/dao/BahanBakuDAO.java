@@ -73,7 +73,9 @@ public class BahanBakuDAO {
 
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT COUNT(*) AS total FROM (SELECT 1 FROM bahan_baku " + (hasKeyword ? "WHERE nama LIKE ? OR CAST(id_bahan AS CHAR) LIKE ? " : "") + "GROUP BY nama, satuan) AS sub";
+        String query = "SELECT COUNT(*) AS total FROM (SELECT 1 FROM bahan_baku "
+                + (hasKeyword ? "WHERE nama LIKE ? OR CAST(id_bahan AS CHAR) LIKE ? " : "")
+                + "GROUP BY nama, satuan) AS sub";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String searchParam = keyword.trim() + "%";
@@ -134,7 +136,7 @@ public class BahanBakuDAO {
                         status = "Rendah";
                     }
 
-                    data.add(new String[]{id, nama, stokStr, satuan, harga, minStokStr, status});
+                    data.add(new String[] { id, nama, stokStr, satuan, harga, minStokStr, status });
                 }
             }
         } catch (Exception e) {
@@ -146,7 +148,9 @@ public class BahanBakuDAO {
     public Map<Integer, String> getSupplierList() {
         Map<Integer, String> suppliers = new HashMap<>();
         String query = "SELECT id_supplier, nama FROM supplier ORDER BY nama ASC";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 suppliers.put(rs.getInt("id_supplier"), rs.getString("nama"));
             }
@@ -159,7 +163,9 @@ public class BahanBakuDAO {
     public List<String> getSatuanList() {
         List<String> satuanList = new ArrayList<>(Arrays.asList("kg", "liter", "pcs", "gram", "ml", "bungkus"));
         String query = "SELECT DISTINCT satuan FROM bahan_baku WHERE satuan IS NOT NULL AND satuan != ''";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             while (rs.next()) {
                 String s = rs.getString("satuan").toLowerCase();
                 if (!satuanList.contains(s)) {
@@ -226,14 +232,16 @@ public class BahanBakuDAO {
 
     public List<String[]> getRiwayatPageData(int limit, int offset, String namaBahan, String keyword) {
         List<String[]> list = new ArrayList<>();
-        String query = "SELECT id_bahan, created_at, nama, id_supplier, stok, satuan, harga_beli " + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND LOWER(CAST(id_supplier AS CHAR)) LIKE LOWER(?) " + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        String query = "SELECT id_bahan, created_at, nama, id_supplier, stok, satuan, harga_beli "
+                + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND LOWER(CAST(id_supplier AS CHAR)) LIKE LOWER(?) "
+                + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
             ps.setString(2, "%" + keyword + "%");
             ps.setInt(3, limit);
             ps.setInt(4, offset);
             try (ResultSet rs = ps.executeQuery()) {
-                java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                java.text.NumberFormat nf = java.text.NumberFormat.getInstance(java.util.Locale.of("id", "ID"));
                 while (rs.next()) {
                     String[] row = new String[8];
                     row[0] = rs.getDate("created_at") != null ? rs.getDate("created_at").toString() : "-";
@@ -258,16 +266,18 @@ public class BahanBakuDAO {
 
     public Map<String, String> getRiwayatTopCardsData(String namaBahan) {
         Map<String, String> result = new HashMap<>();
-        String query = "SELECT COUNT(*) as total_transaksi, SUM(stok * harga_beli) as nilai_pembelian, SUM(stok) as stok_masuk " + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?)";
+        String query = "SELECT COUNT(*) as total_transaksi, SUM(stok * harga_beli) as nilai_pembelian, SUM(stok) as stok_masuk "
+                + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?)";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                    java.text.NumberFormat nf = java.text.NumberFormat.getInstance(java.util.Locale.of("id", "ID"));
                     result.put("total_transaksi", nf.format(rs.getInt("total_transaksi")));
                     double nilai = rs.getDouble("nilai_pembelian");
                     if (nilai >= 1_000_000) {
-                        result.put("nilai_pembelian", "Rp " + String.format("%.1f jt", nilai / 1_000_000.0).replace(".", ","));
+                        result.put("nilai_pembelian",
+                                "Rp " + String.format("%.1f jt", nilai / 1_000_000.0).replace(".", ","));
                     } else {
                         result.put("nilai_pembelian", "Rp " + nf.format(nilai));
                     }

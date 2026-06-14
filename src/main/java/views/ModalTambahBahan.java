@@ -4,7 +4,6 @@ import dao.BahanBakuDAO;
 import components.RoundedPanel;
 import components.ModernScrollBarUI;
 import utils.Theme;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
@@ -79,7 +78,8 @@ public class ModalTambahBahan extends JDialog {
     }
 
     private void setupEscapeKey() {
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"), "closeModal");
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"),
+                "closeModal");
         getRootPane().getActionMap().put("closeModal", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -152,7 +152,6 @@ public class ModalTambahBahan extends JDialog {
         pnlSatuan.setLayout(new BoxLayout(pnlSatuan, BoxLayout.Y_AXIS));
         pnlSatuan.setOpaque(false);
         pnlSatuan.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         pnlSatuan.add(createRequiredLabel("SATUAN"));
 
         satuanInputWrapper = new JPanel(new CardLayout());
@@ -286,7 +285,7 @@ public class ModalTambahBahan extends JDialog {
             return;
         }
 
-        new SwingWorker<BahanBakuModel, Void>() { // <-- Return Model
+        new SwingWorker<BahanBakuModel, Void>() {
             @Override
             protected BahanBakuModel doInBackground() {
                 return bahanDAO.cekDetailBahan(nama);
@@ -297,7 +296,7 @@ public class ModalTambahBahan extends JDialog {
                 try {
                     BahanBakuModel detail = get();
                     if (detail != null) {
-                        applyAutofill(detail); // <-- Kirim Model
+                        applyAutofill(detail);
                     } else {
                         resetAutofill();
                     }
@@ -308,16 +307,16 @@ public class ModalTambahBahan extends JDialog {
         }.execute();
     }
 
-    private void applyAutofill(BahanBakuModel detail) { // <-- Terima Model
+    private void applyAutofill(BahanBakuModel detail) {
         if (isSatuanBaruMode) {
             toggleSatuanMode();
         }
 
-        cbSatuan.setSelectedItem(detail.getSatuan()); // <-- Pakai Getter
+        cbSatuan.setSelectedItem(detail.getSatuan());
         cbSatuan.setEnabled(false);
 
-        java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
-        txtMinStok.setText(formatter.format(detail.getMinStok())); // <-- Pakai Getter
+        java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(java.util.Locale.of("id", "ID"));
+        txtMinStok.setText(formatter.format(detail.getMinStok()));
         txtMinStok.setEnabled(false);
 
         if (lblToggleSatuan != null) {
@@ -344,7 +343,8 @@ public class ModalTambahBahan extends JDialog {
         } catch (IllegalArgumentException ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Peringatan Validasi", JOptionPane.WARNING_MESSAGE);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Terjadi kesalahan sistem: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan sistem: " + ex.getMessage(), "Error",
+                    JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
     }
@@ -396,7 +396,6 @@ public class ModalTambahBahan extends JDialog {
         double min = Double.parseDouble(txtMinStok.getText().replaceAll("[^\\d]", ""));
         double harga = Double.parseDouble(txtHarga.getText().replaceAll("[^\\d]", ""));
 
-        // <-- BUNGKUS DATA KE DALAM MODEL -->
         BahanBakuModel bahanBaru = new BahanBakuModel();
         bahanBaru.setNama(nama);
         bahanBaru.setIdSupplier(sup.getKey());
@@ -405,7 +404,7 @@ public class ModalTambahBahan extends JDialog {
         bahanBaru.setMinStok(min);
         bahanBaru.setHargaBeli(harga);
 
-        if (bahanDAO.insertBahanBaru(bahanBaru)) { // <-- Kirim Model ke DAO
+        if (bahanDAO.insertBahanBaru(bahanBaru)) {
             isSaved = true;
             dispose();
         } else {
@@ -466,7 +465,8 @@ public class ModalTambahBahan extends JDialog {
                 if (!rawText.isEmpty()) {
                     try {
                         long number = Long.parseLong(rawText);
-                        java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                        java.text.NumberFormat formatter = java.text.NumberFormat
+                                .getInstance(java.util.Locale.of("id", "ID"));
                         txt.setText(prefix + formatter.format(number));
                     } catch (NumberFormatException ignored) {
                     }
@@ -482,7 +482,6 @@ public class ModalTambahBahan extends JDialog {
         pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS));
         pnl.setOpaque(false);
         pnl.setAlignmentX(Component.LEFT_ALIGNMENT);
-
         pnl.add(createRequiredLabel(title));
 
         input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
@@ -503,7 +502,9 @@ public class ModalTambahBahan extends JDialog {
 
     private JLabel createRequiredLabel(String title) {
         String hexColor = String.format("#%06x", (Theme.TEXT_SECONDARY.getRGB() & 0xFFFFFF));
-        String titleHtml = "<html><span style='color:" + hexColor + "; font-family:SansSerif; font-size:10px; font-weight:bold;'>" + title + "</span> <span style='color:#FF4747;'>*</span></html>";
+        String titleHtml = "<html><span style='color:" + hexColor
+                + "; font-family:SansSerif; font-size:10px; font-weight:bold;'>" + title
+                + "</span> <span style='color:#FF4747;'>*</span></html>";
         JLabel lblTitle = new JLabel(titleHtml);
         lblTitle.setBorder(new EmptyBorder(0, 0, 5, 0));
         lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -525,7 +526,6 @@ public class ModalTambahBahan extends JDialog {
         txt.setForeground(Theme.TEXT_SECONDARY);
         txt.setFont(new Font("SansSerif", Font.PLAIN, 13));
         txt.setCaretColor(Theme.TEXT_PRIMARY);
-
         txt.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 if (txt.getText().equals(placeholder)) {
@@ -605,7 +605,6 @@ public class ModalTambahBahan extends JDialog {
         lblClose.setFont(new Font("SansSerif", Font.BOLD, 12));
         lblClose.setForeground(Theme.TEXT_SECONDARY);
         btnClose.add(lblClose, BorderLayout.CENTER);
-
         btnClose.addMouseListener(new MouseAdapter() {
             public void mouseClicked(MouseEvent e) {
                 dispose();
@@ -691,8 +690,10 @@ public class ModalTambahBahan extends JDialog {
 
         cb.setRenderer(new DefaultListCellRenderer() {
             @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected,
+                    boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected,
+                        cellHasFocus);
                 label.setBackground(isSelected ? Theme.BORDER : Theme.CARD);
                 label.setForeground(Theme.TEXT_PRIMARY);
                 label.setOpaque(true);
@@ -707,7 +708,8 @@ public class ModalTambahBahan extends JDialog {
                 BasicComboPopup popup = new BasicComboPopup(comboBox) {
                     @Override
                     protected JScrollPane createScroller() {
-                        JScrollPane scroller = new JScrollPane(list, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+                        JScrollPane scroller = new JScrollPane(list, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
                         scroller.getVerticalScrollBar().setUI(new ModernScrollBarUI());
                         scroller.getVerticalScrollBar().setUnitIncrement(16);
                         scroller.setBorder(BorderFactory.createLineBorder(Theme.BORDER, 1));
@@ -726,12 +728,14 @@ public class ModalTambahBahan extends JDialog {
 
             @Override
             public void paintCurrentValue(Graphics g, Rectangle bounds, boolean hasFocus) {
-                ListCellRenderer renderer = comboBox.getRenderer();
-                Component c = renderer.getListCellRendererComponent(listBox, comboBox.getSelectedItem(), -1, false, false);
+                ListCellRenderer<? super Object> renderer = (ListCellRenderer<? super Object>) comboBox.getRenderer();
+                Component c = renderer.getListCellRendererComponent(listBox, comboBox.getSelectedItem(), -1, false,
+                        false);
                 c.setFont(comboBox.getFont());
                 c.setForeground(comboBox.isEnabled() ? Theme.TEXT_PRIMARY : Theme.TEXT_SECONDARY);
                 c.setBackground(Theme.CARD);
-                currentValuePane.paintComponent(g, c, comboBox, bounds.x, bounds.y, bounds.width, bounds.height, c instanceof JPanel);
+                currentValuePane.paintComponent(g, c, comboBox, bounds.x, bounds.y, bounds.width, bounds.height,
+                        c instanceof JPanel);
             }
 
             @Override
@@ -744,7 +748,7 @@ public class ModalTambahBahan extends JDialog {
                         g2.setColor(comboBox.isEnabled() ? Theme.TEXT_SECONDARY : new Color(138, 146, 166, 100));
                         g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                         int w = getWidth(), h = getHeight();
-                        int[] x = {w / 2 - 4, w / 2, w / 2 + 4}, y = {h / 2 - 2, h / 2 + 3, h / 2 - 2};
+                        int[] x = { w / 2 - 4, w / 2, w / 2 + 4 }, y = { h / 2 - 2, h / 2 + 3, h / 2 - 2 };
                         g2.drawPolyline(x, y, 3);
                         g2.dispose();
                     }
