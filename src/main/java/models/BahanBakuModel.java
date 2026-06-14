@@ -27,10 +27,7 @@ public class BahanBakuModel {
         this.hargaBeli = hargaBeli;
         this.createdAt = createdAt;
     }
-
-    // =========================================================
-    // 2. GETTERS & SETTERS
-    // =========================================================
+    
     public int getIdBahan() {
         return idBahan;
     }

@@ -37,15 +37,15 @@ public class DatabaseSeeder {
         "adminSeeder.sql",
         "ownerSeeder.sql",
         "staffSeeder.sql",
-//        "bahanBakuSeeder.sql",
-//        "produksiSeeder.sql",
-//        "recordProduksiSeeder.sql",
-//        "penjualanSeeder.sql",
-//        "recordPenjualanSeeder.sql",
-//        "pemasukanSeeder.sql",
-//        "pengeluaranSeeder.sql",
-//        "laporanKeuanganSeeder.sql",
-//        "inventarisSeeder.sql"
+        "bahanBakuSeeder.sql",
+        "produksiSeeder.sql",
+        "recordProduksiSeeder.sql",
+        "penjualanSeeder.sql",
+        "recordPenjualanSeeder.sql",
+        "pemasukanSeeder.sql",
+        "pengeluaranSeeder.sql",
+        "laporanKeuanganSeeder.sql",
+        "inventarisSeeder.sql"
     };
 
     public static void main(String[] args) {

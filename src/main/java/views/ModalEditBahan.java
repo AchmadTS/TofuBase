@@ -23,7 +23,7 @@ public class ModalEditBahan extends JDialog {
 
     private static final int MODAL_WIDTH = 580;
     private static final int MODAL_HEIGHT = 680;
-    private static final String TITLE = "Edit Data Transaksi";
+    private static final String TITLE = "Edit Data Bahan Baku";
     private static final String SUBTITLE = "Perbarui histori data transaksi bahan baku";
     private static final String ALERT_SATUAN = "Jika satuan diubah, maka akan jadi data yang berbeda di Data Master (data akumulasi akan mencatat sebagai data yang berbeda).";
     private static final String ALERT_MIN_STOK = "MIN yang akan tampil di Data Master adalah MIN STOK yang terbaru.";
