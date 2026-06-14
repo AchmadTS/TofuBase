@@ -2,7 +2,6 @@ package components;
 
 import views.LoginView;
 import utils.Theme;
-
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
 import java.awt.*;

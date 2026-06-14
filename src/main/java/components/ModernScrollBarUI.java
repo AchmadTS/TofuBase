@@ -7,7 +7,6 @@ import utils.Theme;
 
 public class ModernScrollBarUI extends BasicScrollBarUI {
 
-    // Atur ketebalan di sini (dalam pixel)
     private final int THICKNESS = 14;
 
     @Override
@@ -23,10 +22,8 @@ public class ModernScrollBarUI extends BasicScrollBarUI {
         g2.setColor(new Color(100, 100, 100));
 
         if (scrollbar.getOrientation() == JScrollBar.VERTICAL) {
-            // Margin kiri/kanan 3px, margin atas/bawah 2px
             g2.fillRoundRect(thumbBounds.x + 3, thumbBounds.y + 2, thumbBounds.width - 6, thumbBounds.height - 4, 8, 8);
         } else {
-            // Margin atas/bawah 3px, margin kiri/kanan 2px
             g2.fillRoundRect(thumbBounds.x + 2, thumbBounds.y + 3, thumbBounds.width - 4, thumbBounds.height - 6, 8, 8);
         }
         g2.dispose();

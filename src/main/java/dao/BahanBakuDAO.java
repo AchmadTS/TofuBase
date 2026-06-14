@@ -286,4 +286,42 @@ public class BahanBakuDAO {
         }
         return result;
     }
+
+    public Map<String, Object> getTransaksiById(String idBahan) {
+        Map<String, Object> result = new java.util.HashMap<>();
+        String query = "SELECT nama, id_supplier, satuan, stok, min_stok, harga_beli FROM bahan_baku WHERE id_bahan = ?";
+        try (java.sql.Connection conn = utils.DatabaseConfig.getKoneksi(); java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setInt(1, Integer.parseInt(idBahan));
+            try (java.sql.ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    result.put("nama", rs.getString("nama"));
+                    result.put("id_supplier", rs.getInt("id_supplier"));
+                    result.put("satuan", rs.getString("satuan"));
+                    result.put("stok", rs.getDouble("stok"));
+                    result.put("min_stok", rs.getDouble("min_stok"));
+                    result.put("harga_beli", rs.getDouble("harga_beli"));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    public boolean updateTransaksiBahan(String idBahan, String nama, int idSupplier, String satuan, double qty, double minStok, double hargaBeli) {
+        String query = "UPDATE bahan_baku SET nama = ?, id_supplier = ?, satuan = ?, stok = ?, min_stok = ?, harga_beli = ? WHERE id_bahan = ?";
+        try (java.sql.Connection conn = utils.DatabaseConfig.getKoneksi(); java.sql.PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, nama);
+            ps.setInt(2, idSupplier);
+            ps.setString(3, satuan);
+            ps.setDouble(4, qty);
+            ps.setDouble(5, minStok);
+            ps.setDouble(6, hargaBeli);
+            ps.setInt(7, Integer.parseInt(idBahan));
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

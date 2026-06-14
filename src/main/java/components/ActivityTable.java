@@ -32,12 +32,20 @@ public class ActivityTable extends RoundedPanel {
         void onDelete(String id, String name);
     }
 
-    private String title;
-    private String[] headers;
-    private int statusColIndex;
-    private DataProvider dataProvider;
+    private static final String COL_AKSI = "Aksi";
+    private static final String ICON_VIEW = "👁";
+    private static final String ICON_EDIT = "✏";
+    private static final String ICON_DELETE = "🗑";
+    private static final int SCROLL_SPEED = 16;
+    private static final int SEARCH_DELAY_MS = 400;
+    private static final int TABLE_MIN_HEIGHT = 390;
+    private static final int ROW_MAX_HEIGHT = 40;
+    private final String title;
+    private final String[] headers;
+    private final int statusColIndex;
+    private final DataProvider dataProvider;
     private TableActionListener tableActionListener;
-    private TableEditDeleteListener tableEditDeleteListener; // Listener Baru
+    private TableEditDeleteListener tableEditDeleteListener;
     private int currentPage = 1;
     private int entriesPerPage = 5;
     private int totalData = 0;
@@ -57,7 +65,7 @@ public class ActivityTable extends RoundedPanel {
 
         setLayout(new BorderLayout());
         setBorder(new EmptyBorder(20, 20, 20, 20));
-        setMinimumSize(new Dimension(0, 390));
+        setMinimumSize(new Dimension(0, TABLE_MIN_HEIGHT));
         buildUI();
         updateTableModel();
     }
@@ -71,6 +79,12 @@ public class ActivityTable extends RoundedPanel {
     }
 
     private void buildUI() {
+        add(buildTopHeader(), BorderLayout.NORTH);
+        add(buildTableContent(), BorderLayout.CENTER);
+        add(buildPaginationRow(), BorderLayout.SOUTH);
+    }
+
+    private JPanel buildTopHeader() {
         JPanel topHeader = new JPanel(new BorderLayout());
         topHeader.setOpaque(false);
 
@@ -82,6 +96,7 @@ public class ActivityTable extends RoundedPanel {
         controlRow.setOpaque(false);
         controlRow.setBorder(new EmptyBorder(15, 0, 15, 0));
 
+        // Entries
         JPanel leftControl = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         leftControl.setOpaque(false);
         JLabel lblShow = new JLabel("Tampilkan ");
@@ -105,6 +120,7 @@ public class ActivityTable extends RoundedPanel {
             }
         });
 
+        // Search
         JPanel rightControl = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         rightControl.setOpaque(false);
         JLabel lblSearch = new JLabel("Cari: ");
@@ -114,10 +130,23 @@ public class ActivityTable extends RoundedPanel {
         txtSearch.setBackground(Theme.BG);
         txtSearch.setForeground(Theme.TEXT_PRIMARY);
         txtSearch.setCaretColor(Theme.TEXT_PRIMARY);
-        txtSearch.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Theme.BORDER),
-                BorderFactory.createEmptyBorder(5, 5, 5, 5)));
+        txtSearch.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createLineBorder(Theme.BORDER), BorderFactory.createEmptyBorder(5, 5, 5, 5)));
 
-        searchTimer = new Timer(400, e -> {
+        setupSearchDebouncer();
+
+        rightControl.add(lblSearch);
+        rightControl.add(txtSearch);
+
+        controlRow.add(leftControl, BorderLayout.WEST);
+        controlRow.add(rightControl, BorderLayout.EAST);
+
+        topHeader.add(lblTitle, BorderLayout.NORTH);
+        topHeader.add(controlRow, BorderLayout.CENTER);
+        return topHeader;
+    }
+
+    private void setupSearchDebouncer() {
+        searchTimer = new Timer(SEARCH_DELAY_MS, e -> {
             currentPage = 1;
             updateTableModel();
         });
@@ -136,15 +165,9 @@ public class ActivityTable extends RoundedPanel {
                 searchTimer.restart();
             }
         });
+    }
 
-        rightControl.add(lblSearch);
-        rightControl.add(txtSearch);
-        controlRow.add(leftControl, BorderLayout.WEST);
-        controlRow.add(rightControl, BorderLayout.EAST);
-        topHeader.add(lblTitle, BorderLayout.NORTH);
-        topHeader.add(controlRow, BorderLayout.CENTER);
-        add(topHeader, BorderLayout.NORTH);
-
+    private JScrollPane buildTableContent() {
         tableContentPanel = new JPanel();
         tableContentPanel.setLayout(new BoxLayout(tableContentPanel, BoxLayout.Y_AXIS));
         tableContentPanel.setOpaque(false);
@@ -173,14 +196,16 @@ public class ActivityTable extends RoundedPanel {
         tableScroll.setBorder(null);
         tableScroll.setColumnHeaderView(headerRowPanel);
         tableScroll.getColumnHeader().setOpaque(false);
-        tableScroll.getVerticalScrollBar().setUnitIncrement(16);
+        tableScroll.getVerticalScrollBar().setUnitIncrement(SCROLL_SPEED);
         tableScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-        tableScroll.getHorizontalScrollBar().setUnitIncrement(16);
+        tableScroll.getHorizontalScrollBar().setUnitIncrement(SCROLL_SPEED);
         tableScroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
         tableScroll.setPreferredSize(new Dimension(0, 200));
         tableScroll.setMinimumSize(new Dimension(0, 200));
-        add(tableScroll, BorderLayout.CENTER);
+        return tableScroll;
+    }
 
+    private JPanel buildPaginationRow() {
         JPanel paginationRow = new JPanel(new BorderLayout());
         paginationRow.setOpaque(false);
         paginationRow.setBorder(new EmptyBorder(15, 0, 0, 0));
@@ -192,27 +217,14 @@ public class ActivityTable extends RoundedPanel {
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         btnPanel.setOpaque(false);
 
-        btnPrev = new JButton("Sebelumnya");
-        btnPrev.setBackground(Theme.BG);
-        btnPrev.setForeground(Theme.TEXT_PRIMARY);
-        btnPrev.setFocusPainted(false);
-        btnPrev.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnPrev.addActionListener(e -> {
+        btnPrev = createPaginationButton("Sebelumnya", e -> {
             currentPage--;
             updateTableModel();
         });
-
-        btnPageNum = new JButton("1");
+        btnPageNum = createPaginationButton("1", null);
         btnPageNum.setBackground(Theme.BLUE_ACCENT);
         btnPageNum.setForeground(Color.WHITE);
-        btnPageNum.setFocusPainted(false);
-
-        btnNext = new JButton("Selanjutnya");
-        btnNext.setBackground(Theme.BG);
-        btnNext.setForeground(Theme.TEXT_PRIMARY);
-        btnNext.setFocusPainted(false);
-        btnNext.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        btnNext.addActionListener(e -> {
+        btnNext = createPaginationButton("Selanjutnya", e -> {
             currentPage++;
             updateTableModel();
         });
@@ -223,83 +235,101 @@ public class ActivityTable extends RoundedPanel {
 
         paginationRow.add(lblPageInfo, BorderLayout.WEST);
         paginationRow.add(btnPanel, BorderLayout.EAST);
-        add(paginationRow, BorderLayout.SOUTH);
+        return paginationRow;
+    }
+
+    private JButton createPaginationButton(String text, java.awt.event.ActionListener action) {
+        JButton btn = new JButton(text);
+        btn.setBackground(Theme.BG);
+        btn.setForeground(Theme.TEXT_PRIMARY);
+        btn.setFocusPainted(false);
+        if (action != null) {
+            btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+            btn.addActionListener(action);
+        }
+        return btn;
     }
 
     public void updateTableModel() {
         String keyword = txtSearch.getText().trim();
+        showLoadingState();
+        new SwingWorker<TableFetchResult, Void>() {
+            @Override
+            protected TableFetchResult doInBackground() {
+                int dbTotalData = dataProvider.getTotalRowCount(keyword);
+                int tempTotalPages = Math.max(1, (int) Math.ceil((double) dbTotalData / entriesPerPage));
+
+                int safeCurrentPage = Math.min(Math.max(1, currentPage), tempTotalPages);
+                int offset = (safeCurrentPage - 1) * entriesPerPage;
+
+                List<String[]> pageData = dataProvider.getPageData(entriesPerPage, offset, keyword);
+                return new TableFetchResult(dbTotalData, tempTotalPages, safeCurrentPage, offset, pageData);
+            }
+
+            @Override
+            protected void done() {
+                try {
+                    renderTableData(get());
+                } catch (Exception e) {
+                    showEmptyState("Terjadi kesalahan sistem saat memuat data.");
+                    e.printStackTrace();
+                }
+            }
+        }.execute();
+    }
+
+    private void showLoadingState() {
         tableContentPanel.removeAll();
         JLabel lblLoading = new JLabel("Mencari data...");
         lblLoading.setForeground(Theme.TEXT_SECONDARY);
         lblLoading.setBorder(new EmptyBorder(20, 0, 20, 0));
         lblLoading.setAlignmentX(Component.CENTER_ALIGNMENT);
         tableContentPanel.add(lblLoading);
-        tableContentPanel.revalidate();
-        tableContentPanel.repaint();
+        refreshUI();
+    }
 
-        new Thread(() -> {
-            int dbTotalData = dataProvider.getTotalRowCount(keyword);
-            int tempTotalPages = (int) Math.ceil((double) dbTotalData / entriesPerPage);
-            if (tempTotalPages == 0) {
-                tempTotalPages = 1;
+    private void showEmptyState(String message) {
+        tableContentPanel.removeAll();
+        JLabel lblEmpty = new JLabel(message);
+        lblEmpty.setForeground(Theme.TEXT_SECONDARY);
+        lblEmpty.setBorder(new EmptyBorder(20, 0, 20, 0));
+        lblEmpty.setAlignmentX(Component.CENTER_ALIGNMENT);
+        tableContentPanel.add(lblEmpty);
+        refreshUI();
+    }
+
+    private void renderTableData(TableFetchResult result) {
+        totalData = result.totalData;
+        currentPage = result.currentPage;
+        tableContentPanel.removeAll();
+
+        if (result.pageData.isEmpty()) {
+            showEmptyState("Data tidak ditemukan");
+        } else {
+            for (int i = 0; i < result.pageData.size(); i++) {
+                boolean isLastRow = (i == result.pageData.size() - 1);
+                tableContentPanel.add(createDynamicTableRow(result.pageData.get(i), isLastRow));
             }
+        }
 
-            int safeCurrentPage = currentPage;
-            if (safeCurrentPage > tempTotalPages) {
-                safeCurrentPage = tempTotalPages;
-            }
-            if (safeCurrentPage < 1) {
-                safeCurrentPage = 1;
-            }
+        tableContentPanel.add(Box.createVerticalGlue());
 
-            int offset = (safeCurrentPage - 1) * entriesPerPage;
-            List<String[]> pageData = dataProvider.getPageData(entriesPerPage, offset, keyword);
-
-            final int finalTotalData = dbTotalData;
-            final int finalCurrentPage = safeCurrentPage;
-            final int finalTotalPages = tempTotalPages;
-
-            SwingUtilities.invokeLater(() -> {
-                totalData = finalTotalData;
-                currentPage = finalCurrentPage;
-                tableContentPanel.removeAll();
-
-                if (pageData.isEmpty()) {
-                    JLabel lblEmpty = new JLabel("Data tidak ditemukan");
-                    lblEmpty.setForeground(Theme.TEXT_SECONDARY);
-                    lblEmpty.setBorder(new EmptyBorder(20, 0, 20, 0));
-                    lblEmpty.setAlignmentX(Component.CENTER_ALIGNMENT);
-                    tableContentPanel.add(lblEmpty);
-                } else {
-                    for (int i = 0; i < pageData.size(); i++) {
-                        String[] rowData = pageData.get(i);
-                        boolean isLastRow = (i == pageData.size() - 1);
-                        tableContentPanel.add(createDynamicTableRow(rowData, isLastRow));
-                    }
-                }
-
-                tableContentPanel.add(Box.createVerticalGlue());
-                int startItem = (totalData == 0) ? 0 : offset + 1;
-                int endItem = Math.min(offset + entriesPerPage, totalData);
-                java.text.NumberFormat nf = java.text.NumberFormat.getInstance(Locale.forLanguageTag("id-ID"));
-                String info = String.format("Menampilkan %s sampai %s dari %s data", nf.format(startItem), nf.format(endItem), nf.format(totalData));
-
-                lblPageInfo.setText(info);
-                btnPageNum.setText(String.valueOf(currentPage));
-                btnPrev.setEnabled(currentPage > 1);
-                btnNext.setEnabled(currentPage < finalTotalPages);
-
-                tableContentPanel.revalidate();
-                tableContentPanel.repaint();
-            });
-        }).start();
+        // Update Info Pagination
+        int startItem = (totalData == 0) ? 0 : result.offset + 1;
+        int endItem = Math.min(result.offset + entriesPerPage, totalData);
+        java.text.NumberFormat nf = java.text.NumberFormat.getInstance(Locale.forLanguageTag("id-ID"));
+        lblPageInfo.setText(String.format("Menampilkan %s sampai %s dari %s data", nf.format(startItem), nf.format(endItem), nf.format(totalData)));
+        btnPageNum.setText(String.valueOf(currentPage));
+        btnPrev.setEnabled(currentPage > 1);
+        btnNext.setEnabled(currentPage < result.totalPages);
+        refreshUI();
     }
 
     private JPanel createDynamicTableRow(String[] rowData, boolean isLastRow) {
         int cols = headers.length;
         JPanel row = new JPanel(new GridLayout(1, cols, 0, 0));
         row.setOpaque(false);
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, 40));
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_MAX_HEIGHT));
 
         if (!isLastRow) {
             row.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
@@ -309,70 +339,98 @@ public class ActivityTable extends RoundedPanel {
             boolean addRightBorder = (i < cols - 1);
             String cellData = (i < rowData.length && rowData[i] != null) ? rowData[i] : "-";
 
-            if (headers[i].equalsIgnoreCase("Aksi")) {
-                JPanel actionWrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 4));
-                actionWrapper.setOpaque(false);
-                if (addRightBorder) {
-                    actionWrapper.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
-                }
-                
-                final String targetId;
-                if (rowData.length > cols) {
-                    targetId = rowData[rowData.length - 1];
-                } else if (rowData.length > 0) {
-                    targetId = rowData[0];
-                } else {
-                    targetId = "-";
-                }
-
-                final String targetName = rowData.length > 1 ? rowData[1] : "-";
-
-                // Tombol Mata (View)
-                if (tableActionListener != null) {
-                    actionWrapper.add(createActionButton("👁", Theme.BLUE_ACCENT, "Lihat Riwayat", () -> tableActionListener.onViewHistory(targetId, targetName)));
-                }
-
-                // Tombol Edit & Delete
-                if (tableEditDeleteListener != null) {
-                    actionWrapper.add(createActionButton("✏", Theme.WARNING, "Edit Data", () -> tableEditDeleteListener.onEdit(targetId, targetName)));
-                    actionWrapper.add(createActionButton("🗑", Theme.RED, "Hapus Data", () -> tableEditDeleteListener.onDelete(targetId, targetName)));
-                }
-
-                row.add(actionWrapper);
+            if (headers[i].equalsIgnoreCase(COL_AKSI)) {
+                row.add(createActionCell(rowData, cols, addRightBorder));
             } else if (i == statusColIndex) {
-                Color badgeColor = Theme.TEXT_PRIMARY;
-                String lowerStr = cellData.toLowerCase();
-                if (lowerStr.contains("selesai") || lowerStr.contains("lunas") || lowerStr.contains("aman")) {
-                    badgeColor = Theme.GREEN;
-                } else if (lowerStr.contains("proses") || lowerStr.contains("hutang") || lowerStr.contains("rendah")) {
-                    badgeColor = Theme.WARNING;
-                } else if (lowerStr.contains("batal") || lowerStr.contains("kritis")) {
-                    badgeColor = Theme.RED;
-                }
-
-                JPanel badgeWrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
-                badgeWrapper.setOpaque(false);
-                if (addRightBorder) {
-                    badgeWrapper.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
-                }
-
-                JLabel lblBadge = new JLabel(cellData, SwingConstants.CENTER);
-                lblBadge.setOpaque(true);
-                lblBadge.setBackground(new Color(0, 0, 0, 0));
-                lblBadge.setForeground(badgeColor);
-                lblBadge.setFont(new Font("SansSerif", Font.BOLD, 11));
-                lblBadge.setBorder(new EmptyBorder(4, 10, 4, 10));
-                RoundedPanel pillPanel = new RoundedPanel(12,
-                        new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 40));
-                pillPanel.setLayout(new BorderLayout());
-                pillPanel.add(lblBadge, BorderLayout.CENTER);
-                badgeWrapper.add(pillPanel);
-                row.add(badgeWrapper);
+                row.add(createStatusCell(cellData, addRightBorder));
             } else {
                 row.add(createTableCell(cellData, (i == 1) ? Theme.TEXT_SECONDARY : Theme.TEXT_PRIMARY, addRightBorder));
             }
         }
         return row;
+    }
+
+    private JPanel createActionCell(String[] rowData, int cols, boolean addRightBorder) {
+        JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 4));
+        wrapper.setOpaque(false);
+        if (addRightBorder) {
+            wrapper.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
+        }
+
+        final String targetId = extractTargetId(rowData, cols);
+        final String targetName = rowData.length > 1 ? rowData[1] : "-";
+
+        if (tableActionListener != null) {
+            wrapper.add(createActionButton(ICON_VIEW, Theme.BLUE_ACCENT, "Lihat Riwayat",
+                    () -> tableActionListener.onViewHistory(targetId, targetName)));
+        }
+        if (tableEditDeleteListener != null) {
+            wrapper.add(createActionButton(ICON_EDIT, Theme.WARNING, "Edit Data",
+                    () -> tableEditDeleteListener.onEdit(targetId, targetName)));
+            wrapper.add(createActionButton(ICON_DELETE, Theme.RED, "Hapus Data",
+                    () -> tableEditDeleteListener.onDelete(targetId, targetName)));
+        }
+        return wrapper;
+    }
+
+    private String extractTargetId(String[] rowData, int cols) {
+        if (rowData.length > cols) {
+            return rowData[rowData.length - 1];
+        }
+        if (rowData.length > 0) {
+            return rowData[0];
+        }
+        return "-";
+    }
+
+    private JPanel createStatusCell(String cellData, boolean addRightBorder) {
+        JPanel wrapper = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 8));
+        wrapper.setOpaque(false);
+        if (addRightBorder) {
+            wrapper.setBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER));
+        }
+
+        Color badgeColor = getStatusColor(cellData);
+
+        JLabel lblBadge = new JLabel(cellData, SwingConstants.CENTER);
+        lblBadge.setOpaque(true);
+        lblBadge.setBackground(new Color(0, 0, 0, 0));
+        lblBadge.setForeground(badgeColor);
+        lblBadge.setFont(new Font("SansSerif", Font.BOLD, 11));
+        lblBadge.setBorder(new EmptyBorder(4, 10, 4, 10));
+
+        RoundedPanel pillPanel = new RoundedPanel(12, new Color(badgeColor.getRed(), badgeColor.getGreen(), badgeColor.getBlue(), 40));
+        pillPanel.setLayout(new BorderLayout());
+        pillPanel.add(lblBadge, BorderLayout.CENTER);
+
+        wrapper.add(pillPanel);
+        return wrapper;
+    }
+
+    private Color getStatusColor(String status) {
+        String lowerStr = status.toLowerCase();
+        if (lowerStr.matches(".*(selesai|lunas|aman).*")) {
+            return Theme.GREEN;
+        }
+        if (lowerStr.matches(".*(proses|hutang|rendah).*")) {
+            return Theme.WARNING;
+        }
+        if (lowerStr.matches(".*(batal|kritis).*")) {
+            return Theme.RED;
+        }
+        return Theme.TEXT_PRIMARY;
+    }
+
+    private JLabel createTableCell(String text, Color color, boolean addRightBorder) {
+        JLabel l = new JLabel(text);
+        l.setForeground(color);
+        l.setFont(new Font("SansSerif", Font.PLAIN, 13));
+        if (addRightBorder) {
+            l.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER), BorderFactory.createEmptyBorder(10, 5, 10, 5)));
+        } else {
+            l.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
+        }
+        return l;
     }
 
     private RoundedPanel createActionButton(String icon, Color hoverColor, String tooltip, Runnable onClick) {
@@ -414,17 +472,22 @@ public class ActivityTable extends RoundedPanel {
         return btn;
     }
 
-    private JLabel createTableCell(String text, Color color, boolean addRightBorder) {
-        JLabel l = new JLabel(text);
-        l.setForeground(color);
-        l.setFont(new Font("SansSerif", Font.PLAIN, 13));
+    private void refreshUI() {
+        tableContentPanel.revalidate();
+        tableContentPanel.repaint();
+    }
 
-        if (addRightBorder) {
-            l.setBorder(BorderFactory.createCompoundBorder(BorderFactory.createMatteBorder(0, 0, 0, 1, Theme.BORDER),
-                    BorderFactory.createEmptyBorder(10, 5, 10, 5)));
-        } else {
-            l.setBorder(BorderFactory.createEmptyBorder(10, 5, 10, 5));
+    private static class TableFetchResult {
+
+        final int totalData, totalPages, currentPage, offset;
+        final List<String[]> pageData;
+
+        TableFetchResult(int totalData, int totalPages, int currentPage, int offset, List<String[]> pageData) {
+            this.totalData = totalData;
+            this.totalPages = totalPages;
+            this.currentPage = currentPage;
+            this.offset = offset;
+            this.pageData = pageData;
         }
-        return l;
     }
 }
