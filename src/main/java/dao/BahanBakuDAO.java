@@ -317,4 +317,15 @@ public class BahanBakuDAO {
             return false;
         }
     }
+    
+    public boolean deleteRiwayatById(String idBahan) {
+        String query = "DELETE FROM bahan_baku WHERE id_bahan = ?";
+        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setInt(1, Integer.parseInt(idBahan));
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

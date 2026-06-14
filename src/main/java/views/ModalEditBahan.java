@@ -2,50 +2,69 @@ package views;
 
 import dao.BahanBakuDAO;
 import components.RoundedPanel;
+import components.ModernScrollBarUI;
 import utils.Theme;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import javax.swing.plaf.basic.BasicComboBoxUI;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
+import javax.swing.plaf.basic.BasicComboBoxUI;
+import javax.swing.plaf.basic.BasicComboPopup;
+import javax.swing.plaf.basic.ComboPopup;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
-import components.ModernScrollBarUI;
-import javax.swing.plaf.basic.BasicComboPopup;
-import javax.swing.plaf.basic.ComboPopup;
 
 public class ModalEditBahan extends JDialog {
 
+    private static final int MODAL_WIDTH = 580;
+    private static final int MODAL_HEIGHT = 680;
+    private static final String TITLE = "Edit Data Transaksi";
+    private static final String SUBTITLE = "Perbarui histori data transaksi bahan baku";
+    private static final String ALERT_SATUAN = "Jika satuan diubah, maka akan jadi data yang berbeda di Data Master (data akumulasi akan mencatat sebagai data yang berbeda).";
+    private static final String ALERT_MIN_STOK = "MIN yang akan tampil di Data Master adalah MIN STOK yang terbaru.";
     private final BahanBakuDAO bahanDAO = new BahanBakuDAO();
+    private final String targetIdBahan;
     private boolean isSaved = false;
-    private String targetIdBahan;
     private boolean isInitializing = true;
-    private JTextField txtNama;
+    private boolean isSatuanBaruMode = false;
+    private Point initialClick;
+    private String originalSatuan = "";
+    private String originalMinStok = "";
+    private boolean alertSatuanShown = false;
+    private boolean alertMinStokShown = false;
+    private JTextField txtNama, txtSatuanBaru, txtQty, txtMinStok, txtHarga;
     private JComboBox<ComboItem> cbSupplier;
     private JComboBox<String> cbSatuan;
-    private JTextField txtSatuanBaru;
     private JPanel satuanInputWrapper;
     private JLabel lblToggleSatuan;
-    private boolean isSatuanBaruMode = false;
-    private JTextField txtQty, txtMinStok, txtHarga;
-    private Point initialClick;
 
     public ModalEditBahan(Frame parent, String idBahan) {
-        super(parent, "Edit Bahan Baku", true);
+        super(parent, TITLE, true);
         this.targetIdBahan = idBahan;
+        setupDialogProperties(parent);
+        setupGlobalUI();
+        buildMainLayout();
+        setupEscapeKey();
+        loadDataForEdit();
+    }
 
-        setSize(580, 680);
+    private void setupDialogProperties(Frame parent) {
+        setSize(MODAL_WIDTH, MODAL_HEIGHT);
         setLocationRelativeTo(parent);
         setUndecorated(true);
         setBackground(new Color(0, 0, 0, 0));
+    }
 
+    private void setupGlobalUI() {
         UIManager.put("ComboBox.disabledBackground", Theme.CARD);
         UIManager.put("ComboBox.disabledForeground", Theme.TEXT_SECONDARY);
+    }
 
+    private void buildMainLayout() {
         RoundedPanel mainWrapper = new RoundedPanel(25, Theme.BG);
         mainWrapper.setLayout(new BorderLayout());
         mainWrapper.setBorder(BorderFactory.createLineBorder(Theme.BORDER, 1));
@@ -59,9 +78,6 @@ public class ModalEditBahan extends JDialog {
         mainWrapper.add(bodyWrapper, BorderLayout.CENTER);
         mainWrapper.add(buildFooter(), BorderLayout.SOUTH);
         getContentPane().add(mainWrapper, BorderLayout.CENTER);
-
-        setupEscapeKey();
-        loadDataForEdit();
     }
 
     private void setupEscapeKey() {
@@ -74,33 +90,11 @@ public class ModalEditBahan extends JDialog {
         });
     }
 
-    private JPanel createThinLine() {
-        JPanel line = new JPanel();
-        line.setBackground(Theme.BORDER);
-        line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
-        line.setPreferredSize(new Dimension(Integer.MAX_VALUE, 1));
-        line.setAlignmentX(Component.LEFT_ALIGNMENT);
-        return line;
-    }
-
     private JPanel buildHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setOpaque(false);
         header.setBorder(new EmptyBorder(20, 30, 15, 30));
-        header.addMouseListener(new MouseAdapter() {
-            public void mousePressed(MouseEvent e) {
-                initialClick = e.getPoint();
-            }
-        });
-        header.addMouseMotionListener(new MouseAdapter() {
-            public void mouseDragged(MouseEvent e) {
-                int thisX = getLocation().x;
-                int thisY = getLocation().y;
-                int xMoved = e.getX() - initialClick.x;
-                int yMoved = e.getY() - initialClick.y;
-                setLocation(thisX + xMoved, thisY + yMoved);
-            }
-        });
+        enableWindowDrag(header);
 
         RoundedPanel iconPanel = new RoundedPanel(12, Theme.WARNING);
         iconPanel.setPreferredSize(new Dimension(40, 40));
@@ -114,11 +108,11 @@ public class ModalEditBahan extends JDialog {
         titleTextPanel.setOpaque(false);
         titleTextPanel.setBorder(new EmptyBorder(0, 15, 0, 0));
 
-        JLabel title = new JLabel("Edit Data Transaksi");
+        JLabel title = new JLabel(TITLE);
         title.setFont(new Font("SansSerif", Font.BOLD, 17));
         title.setForeground(Theme.TEXT_PRIMARY);
 
-        JLabel subtitle = new JLabel("Perbarui histori data transaksi bahan baku");
+        JLabel subtitle = new JLabel(SUBTITLE);
         subtitle.setFont(new Font("SansSerif", Font.PLAIN, 11));
         subtitle.setForeground(Theme.TEXT_SECONDARY);
 
@@ -130,32 +124,8 @@ public class ModalEditBahan extends JDialog {
         leftHeader.add(iconPanel, BorderLayout.WEST);
         leftHeader.add(titleTextPanel, BorderLayout.CENTER);
 
-        RoundedPanel btnClose = new RoundedPanel(10, Theme.CARD);
-        btnClose.setPreferredSize(new Dimension(35, 35));
-        btnClose.setLayout(new BorderLayout());
-        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        JLabel lblClose = new JLabel("X", SwingConstants.CENTER);
-        lblClose.setFont(new Font("SansSerif", Font.BOLD, 12));
-        lblClose.setForeground(Theme.TEXT_SECONDARY);
-        btnClose.add(lblClose, BorderLayout.CENTER);
-        btnClose.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                dispose();
-            }
-
-            public void mouseEntered(MouseEvent e) {
-                btnClose.setBackground(Theme.BORDER);
-                btnClose.repaint();
-            }
-
-            public void mouseExited(MouseEvent e) {
-                btnClose.setBackground(Theme.CARD);
-                btnClose.repaint();
-            }
-        });
-
         header.add(leftHeader, BorderLayout.WEST);
-        header.add(btnClose, BorderLayout.EAST);
+        header.add(createCloseButton(), BorderLayout.EAST);
         return header;
     }
 
@@ -166,38 +136,13 @@ public class ModalEditBahan extends JDialog {
         form.setBorder(new EmptyBorder(25, 35, 10, 35));
         form.setAlignmentX(Component.LEFT_ALIGNMENT);
 
+        // NAMA BAHAN
         txtNama = createRawTextField("Memuat data...");
-        Timer checkTimer = new Timer(500, e -> {
-            if (!isInitializing) {
-                checkBahanExist(txtNama.getText().trim());
-            }
-        });
-        checkTimer.setRepeats(false);
-        txtNama.getDocument().addDocumentListener(new DocumentListener() {
-            public void insertUpdate(DocumentEvent e) {
-                if (!isInitializing) {
-                    checkTimer.restart();
-                }
-            }
-
-            public void removeUpdate(DocumentEvent e) {
-                if (!isInitializing) {
-                    checkTimer.restart();
-                }
-            }
-
-            public void changedUpdate(DocumentEvent e) {
-                if (!isInitializing) {
-                    checkTimer.restart();
-                }
-            }
-        });
-
-        JPanel grpNama = createFormGroup("NAMA BAHAN", wrapInput(txtNama), null);
-        grpNama.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(grpNama);
+        setupNamaDebouncer();
+        form.add(createFormGroup("NAMA BAHAN", wrapInput(txtNama), null));
         form.add(Box.createVerticalStrut(20));
 
+        // SUPPLIER & SATUAN
         JPanel row2 = new JPanel(new GridLayout(1, 2, 20, 0));
         row2.setOpaque(false);
         row2.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -212,6 +157,7 @@ public class ModalEditBahan extends JDialog {
         form.add(createThinLine());
         form.add(Box.createVerticalStrut(20));
 
+        // STOK & HARGA
         JLabel lblSection = new JLabel("📋 DATA STOK & HARGA");
         lblSection.setForeground(Theme.TEXT_SECONDARY);
         lblSection.setFont(new Font("SansSerif", Font.BOLD, 12));
@@ -228,6 +174,7 @@ public class ModalEditBahan extends JDialog {
 
         txtMinStok = createRawTextField("Memuat...");
         setupNumberFormatListener(txtMinStok, "");
+        setupMinStokAlertListener();
 
         row3.add(createFormGroup("QTY (STOK DIEDIT)", wrapInput(txtQty), "Jumlah diedit ke stok saat ini"));
         row3.add(createFormGroup("MIN. STOK", wrapInput(txtMinStok), "Batas bawah pemicu peringatan"));
@@ -237,11 +184,133 @@ public class ModalEditBahan extends JDialog {
 
         txtHarga = createRawTextField("Memuat...");
         setupNumberFormatListener(txtHarga, "Rp ");
+        form.add(createFormGroup("HARGA BELI", wrapInput(txtHarga), "Harga per satuan dari supplier"));
 
-        JPanel grpHarga = createFormGroup("HARGA BELI", wrapInput(txtHarga), "Harga per satuan dari supplier");
-        grpHarga.setAlignmentX(Component.LEFT_ALIGNMENT);
-        form.add(grpHarga);
         return form;
+    }
+
+    private JPanel buildSatuanGroup() {
+        JPanel pnlSatuan = new JPanel();
+        pnlSatuan.setLayout(new BoxLayout(pnlSatuan, BoxLayout.Y_AXIS));
+        pnlSatuan.setOpaque(false);
+        pnlSatuan.setAlignmentX(Component.LEFT_ALIGNMENT);
+        pnlSatuan.add(createRequiredLabel("SATUAN"));
+
+        satuanInputWrapper = new JPanel(new CardLayout());
+        satuanInputWrapper.setOpaque(false);
+        satuanInputWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
+        satuanInputWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
+
+        cbSatuan = new JComboBox<>();
+        styleComboBox(cbSatuan);
+        cbSatuan.addActionListener(e -> triggerSatuanAlert());
+
+        txtSatuanBaru = createRawTextField("Ketik satuan baru...");
+        txtSatuanBaru.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                triggerSatuanAlert();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                triggerSatuanAlert();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                triggerSatuanAlert();
+            }
+        });
+
+        satuanInputWrapper.add(wrapInput(cbSatuan), "COMBO");
+        satuanInputWrapper.add(wrapInput(txtSatuanBaru), "TEXT");
+
+        JPanel toggleContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        toggleContainer.setOpaque(false);
+        toggleContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        lblToggleSatuan = new JLabel();
+        lblToggleSatuan.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        lblToggleSatuan.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        lblToggleSatuan.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                toggleSatuanMode();
+                triggerSatuanAlert();
+            }
+        });
+        updateToggleSatuanLabel();
+
+        toggleContainer.add(lblToggleSatuan);
+        pnlSatuan.add(satuanInputWrapper);
+        pnlSatuan.add(toggleContainer);
+        return pnlSatuan;
+    }
+
+    private JPanel buildFooter() {
+        JPanel footerWrapper = new JPanel(new BorderLayout());
+        footerWrapper.setOpaque(false);
+        footerWrapper.add(createThinLine(), BorderLayout.NORTH);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
+        buttonPanel.setOpaque(false);
+        buttonPanel.setBorder(new EmptyBorder(20, 30, 25, 30));
+
+        buttonPanel.add(createGhostButton("Batal", this::dispose));
+        buttonPanel.add(createPrimaryButton("💾 Simpan Perubahan", this::handleSimpan));
+
+        footerWrapper.add(buttonPanel, BorderLayout.CENTER);
+        return footerWrapper;
+    }
+
+    private void triggerSatuanAlert() {
+        if (isInitializing || alertSatuanShown) {
+            return;
+        }
+
+        String currentSatuan = isSatuanBaruMode ? txtSatuanBaru.getText().trim() : (cbSatuan.getSelectedItem() != null ? cbSatuan.getSelectedItem().toString() : "");
+        if (!currentSatuan.equals(originalSatuan) && !currentSatuan.equals("Pilih satuan...") && !currentSatuan.equals("Ketik satuan baru...")) {
+            int choice = JOptionPane.showConfirmDialog(this, "Mengubah satuan akan membuat data baru di Data Master. Lanjutkan?", "Konfirmasi Perubahan Satuan", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+            if (choice == JOptionPane.OK_OPTION) {
+                alertSatuanShown = true;
+            } else {
+                isInitializing = true;
+                cbSatuan.setSelectedItem(originalSatuan);
+                isInitializing = false;
+            }
+        }
+    }
+
+    private void setupMinStokAlertListener() {
+        txtMinStok.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                checkMinStok();
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                checkMinStok();
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                checkMinStok();
+            }
+
+            private void checkMinStok() {
+                if (isInitializing || alertMinStokShown) {
+                    return;
+                }
+
+                String current = txtMinStok.getText().trim();
+                if (!current.equals(originalMinStok) && !current.isEmpty() && !current.equals("Memuat...")) {
+                    int choice = JOptionPane.showConfirmDialog(ModalEditBahan.this, "MIN STOK yang disimpan akan menjadi batas baru di Data Master. Lanjutkan?", "Konfirmasi Min Stok", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
+                    if (choice == JOptionPane.OK_OPTION) {
+                        alertMinStokShown = true;
+                    } else {
+                        isInitializing = true;
+                        txtMinStok.setText(originalMinStok);
+                        isInitializing = false;
+                    }
+                }
+            }
+        });
     }
 
     private void loadDataForEdit() {
@@ -252,11 +321,21 @@ public class ModalEditBahan extends JDialog {
         cbSatuan.addItem("Memuat data...");
         cbSatuan.setEnabled(false);
 
-        new Thread(() -> {
-            Map<Integer, String> suppliers = bahanDAO.getSupplierList();
-            List<String> satuans = bahanDAO.getSatuanList();
-            Map<String, Object> data = bahanDAO.getTransaksiById(targetIdBahan);
-            SwingUtilities.invokeLater(() -> {
+        new SwingWorker<Void, Void>() {
+            Map<Integer, String> suppliers;
+            List<String> satuans;
+            Map<String, Object> data;
+
+            @Override
+            protected Void doInBackground() {
+                suppliers = bahanDAO.getSupplierList();
+                satuans = bahanDAO.getSatuanList();
+                data = bahanDAO.getTransaksiById(targetIdBahan);
+                return null;
+            }
+
+            @Override
+            protected void done() {
                 isInitializing = true;
 
                 // Suppliers
@@ -288,14 +367,15 @@ public class ModalEditBahan extends JDialog {
                         }
                     }
 
-                    String dbSatuan = (String) data.get("satuan");
-                    cbSatuan.setSelectedItem(dbSatuan);
+                    originalSatuan = (String) data.get("satuan");
+                    cbSatuan.setSelectedItem(originalSatuan);
 
                     java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
                     txtQty.setText(nf.format((Double) data.get("stok")));
                     txtQty.setForeground(Theme.TEXT_PRIMARY);
 
-                    txtMinStok.setText(nf.format((Double) data.get("min_stok")));
+                    originalMinStok = nf.format((Double) data.get("min_stok"));
+                    txtMinStok.setText(originalMinStok);
                     txtMinStok.setForeground(Theme.TEXT_PRIMARY);
 
                     txtHarga.setText("Rp " + nf.format((Double) data.get("harga_beli")));
@@ -303,8 +383,8 @@ public class ModalEditBahan extends JDialog {
                 }
 
                 isInitializing = false;
-            });
-        }).start();
+            }
+        }.execute();
     }
 
     private void checkBahanExist(String nama) {
@@ -313,34 +393,159 @@ public class ModalEditBahan extends JDialog {
             return;
         }
 
-        new Thread(() -> {
-            Map<String, Object> detail = bahanDAO.cekDetailBahan(nama);
-            SwingUtilities.invokeLater(() -> {
-                if (detail != null && !detail.isEmpty()) {
-                    String satuan = (String) detail.get("satuan");
-                    double minStok = (Double) detail.get("min_stok");
+        new SwingWorker<Map<String, Object>, Void>() {
+            @Override
+            protected Map<String, Object> doInBackground() {
+                return bahanDAO.cekDetailBahan(nama);
+            }
 
-                    if (isSatuanBaruMode) {
-                        isSatuanBaruMode = false;
-                        CardLayout cl = (CardLayout) (satuanInputWrapper.getLayout());
-                        cl.show(satuanInputWrapper, "COMBO");
+            @Override
+            protected void done() {
+                try {
+                    Map<String, Object> detail = get();
+                    if (detail != null && !detail.isEmpty()) {
+                        isInitializing = true;
+                        String satuan = (String) detail.get("satuan");
+                        double minStok = (Double) detail.get("min_stok");
+
+                        if (isSatuanBaruMode) {
+                            toggleSatuanMode();
+                        }
+
+                        cbSatuan.setSelectedItem(satuan);
+                        cbSatuan.setEnabled(false);
+
+                        java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
+                        txtMinStok.setText(formatter.format(minStok));
+                        txtMinStok.setEnabled(false);
+
+                        if (lblToggleSatuan != null) {
+                            lblToggleSatuan.setVisible(false);
+                        }
+                        isInitializing = false;
+                    } else {
+                        resetAutofill();
                     }
-
-                    cbSatuan.setSelectedItem(satuan);
-                    cbSatuan.setEnabled(false);
-
-                    java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
-                    txtMinStok.setText(formatter.format(minStok));
-                    txtMinStok.setEnabled(false);
-
-                    if (lblToggleSatuan != null) {
-                        lblToggleSatuan.setVisible(false);
-                    }
-                } else {
-                    resetAutofill();
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
-            });
-        }).start();
+            }
+        }.execute();
+    }
+
+    private void handleSimpan() {
+        try {
+            validateInput();
+            saveToDatabase();
+        } catch (IllegalArgumentException ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Peringatan Validasi", JOptionPane.WARNING_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Terjadi kesalahan sistem: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+            ex.printStackTrace();
+        }
+    }
+
+    private void validateInput() {
+        String nama = txtNama.getText().trim();
+        if (nama.isEmpty() || nama.startsWith("cth.") || nama.equals("Memuat data...")) {
+            throw new IllegalArgumentException("Nama bahan tidak boleh kosong!");
+        }
+
+        ComboItem sup = (ComboItem) cbSupplier.getSelectedItem();
+        if (sup == null || sup.getKey() == -1) {
+            throw new IllegalArgumentException("Silakan pilih Supplier yang valid!");
+        }
+
+        if (isSatuanBaruMode) {
+            String satuan = txtSatuanBaru.getText().trim();
+            if (satuan.isEmpty() || satuan.equalsIgnoreCase("Ketik satuan baru...")) {
+                throw new IllegalArgumentException("Kolom satuan baru tidak boleh kosong!");
+            }
+        } else {
+            String satuan = cbSatuan.getSelectedItem() != null ? cbSatuan.getSelectedItem().toString() : "";
+            if (satuan.isEmpty() || satuan.contains("Pilih") || satuan.contains("Memuat")) {
+                throw new IllegalArgumentException("Silakan pilih satuan dari daftar!");
+            }
+        }
+
+        validateNumericInput(txtQty.getText(), "QTY (Stok)");
+        validateNumericInput(txtMinStok.getText(), "Minimal Stok");
+        validateNumericInput(txtHarga.getText(), "Harga Beli");
+    }
+
+    private void validateNumericInput(String text, String fieldName) {
+        String rawNumber = text.replaceAll("[^\\d]", "");
+        if (rawNumber.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " harus diisi dengan angka!");
+        }
+        if (Double.parseDouble(rawNumber) <= 0) {
+            throw new IllegalArgumentException(fieldName + " harus lebih dari 0!");
+        }
+    }
+
+    private void saveToDatabase() {
+        String nama = txtNama.getText().trim();
+        ComboItem sup = (ComboItem) cbSupplier.getSelectedItem();
+        String satuan = isSatuanBaruMode ? txtSatuanBaru.getText().trim() : cbSatuan.getSelectedItem().toString();
+
+        double qty = Double.parseDouble(txtQty.getText().replaceAll("[^\\d]", ""));
+        double min = Double.parseDouble(txtMinStok.getText().replaceAll("[^\\d]", ""));
+        double harga = Double.parseDouble(txtHarga.getText().replaceAll("[^\\d]", ""));
+
+        if (bahanDAO.updateTransaksiBahan(targetIdBahan, nama, sup.getKey(), satuan, qty, min, harga)) {
+            isSaved = true;
+            dispose();
+        } else {
+            throw new RuntimeException("Gagal menyimpan perubahan ke database!");
+        }
+    }
+
+    private void setupNamaDebouncer() {
+        Timer checkTimer = new Timer(500, e -> {
+            if (!isInitializing) {
+                checkBahanExist(txtNama.getText().trim());
+            }
+        });
+        checkTimer.setRepeats(false);
+        txtNama.getDocument().addDocumentListener(new DocumentListener() {
+            public void insertUpdate(DocumentEvent e) {
+                if (!isInitializing) {
+                    checkTimer.restart();
+                }
+            }
+
+            public void removeUpdate(DocumentEvent e) {
+                if (!isInitializing) {
+                    checkTimer.restart();
+                }
+            }
+
+            public void changedUpdate(DocumentEvent e) {
+                if (!isInitializing) {
+                    checkTimer.restart();
+                }
+            }
+        });
+    }
+
+    private void toggleSatuanMode() {
+        isSatuanBaruMode = !isSatuanBaruMode;
+        CardLayout cl = (CardLayout) (satuanInputWrapper.getLayout());
+        cl.show(satuanInputWrapper, isSatuanBaruMode ? "TEXT" : "COMBO");
+        if (isSatuanBaruMode) {
+            txtSatuanBaru.requestFocus();
+        }
+        updateToggleSatuanLabel();
+    }
+
+    private void updateToggleSatuanLabel() {
+        String hexPrimary = String.format("#%06x", (Theme.WARNING.getRGB() & 0xFFFFFF));
+        String hexDanger = String.format("#%06x", (Theme.RED.getRGB() & 0xFFFFFF));
+        if (isSatuanBaruMode) {
+            lblToggleSatuan.setText("<html><u style='color:" + hexDanger + ";'>batal, pilih dari daftar</u></html>");
+        } else {
+            lblToggleSatuan.setText("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
+        }
     }
 
     private void resetAutofill() {
@@ -348,24 +553,18 @@ public class ModalEditBahan extends JDialog {
         txtMinStok.setEnabled(true);
         if (lblToggleSatuan != null) {
             lblToggleSatuan.setVisible(true);
-            String hexPrimary = String.format("#%06x", (Theme.WARNING.getRGB() & 0xFFFFFF));
-            String hexDanger = String.format("#%06x", (Theme.RED.getRGB() & 0xFFFFFF));
-            if (isSatuanBaruMode) {
-                lblToggleSatuan.setText("<html><u style='color:" + hexDanger + ";'>batal, pilih dari daftar</u></html>");
-            } else {
-                lblToggleSatuan.setText("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
-            }
+            updateToggleSatuanLabel();
         }
-        this.revalidate();
-        this.repaint();
+        revalidate();
+        repaint();
     }
 
     private void setupNumberFormatListener(JTextField txt, String prefix) {
         txt.addKeyListener(new java.awt.event.KeyAdapter() {
             @Override
             public void keyReleased(java.awt.event.KeyEvent e) {
-                int keyCode = e.getKeyCode();
-                if (keyCode == java.awt.event.KeyEvent.VK_LEFT || keyCode == java.awt.event.KeyEvent.VK_RIGHT || keyCode == java.awt.event.KeyEvent.VK_UP || keyCode == java.awt.event.KeyEvent.VK_DOWN) {
+                int key = e.getKeyCode();
+                if (key == java.awt.event.KeyEvent.VK_LEFT || key == java.awt.event.KeyEvent.VK_RIGHT || key == java.awt.event.KeyEvent.VK_UP || key == java.awt.event.KeyEvent.VK_DOWN) {
                     return;
                 }
                 String rawText = txt.getText().replaceAll("[^\\d]", "");
@@ -374,76 +573,13 @@ public class ModalEditBahan extends JDialog {
                         long number = Long.parseLong(rawText);
                         java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
                         txt.setText(prefix + formatter.format(number));
-                    } catch (NumberFormatException ex) {
+                    } catch (NumberFormatException ignored) {
                     }
-                } else if (keyCode != java.awt.event.KeyEvent.VK_BACK_SPACE) {
+                } else if (key != java.awt.event.KeyEvent.VK_BACK_SPACE) {
                     txt.setText("");
                 }
             }
         });
-    }
-
-    private JPanel buildFooter() {
-        JPanel footerWrapper = new JPanel(new BorderLayout());
-        footerWrapper.setOpaque(false);
-        footerWrapper.add(createThinLine(), BorderLayout.NORTH);
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 15, 0));
-        buttonPanel.setOpaque(false);
-        buttonPanel.setBorder(new EmptyBorder(20, 30, 25, 30));
-
-        RoundedPanel btnBatal = new RoundedPanel(12, Theme.CARD);
-        btnBatal.setPreferredSize(new Dimension(90, 40));
-        btnBatal.setLayout(new BorderLayout());
-        btnBatal.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        JLabel lblBatal = new JLabel("Batal", SwingConstants.CENTER);
-        lblBatal.setForeground(Theme.TEXT_PRIMARY);
-        lblBatal.setFont(new Font("SansSerif", Font.BOLD, 13));
-        btnBatal.add(lblBatal, BorderLayout.CENTER);
-        btnBatal.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                dispose();
-            }
-
-            public void mouseEntered(MouseEvent e) {
-                btnBatal.setBackground(Theme.BORDER);
-                btnBatal.repaint();
-            }
-
-            public void mouseExited(MouseEvent e) {
-                btnBatal.setBackground(Theme.CARD);
-                btnBatal.repaint();
-            }
-        });
-
-        RoundedPanel btnSimpan = new RoundedPanel(12, Theme.WARNING);
-        btnSimpan.setPreferredSize(new Dimension(180, 40));
-        btnSimpan.setLayout(new BorderLayout());
-        btnSimpan.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        JLabel lblSimpan = new JLabel("💾 Simpan Perubahan", SwingConstants.CENTER);
-        lblSimpan.setForeground(Color.WHITE);
-        lblSimpan.setFont(new Font("SansSerif", Font.BOLD, 13));
-        btnSimpan.add(lblSimpan, BorderLayout.CENTER);
-        btnSimpan.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                handleSimpan();
-            }
-
-            public void mouseEntered(MouseEvent e) {
-                btnSimpan.setBackground(Theme.WARNING.brighter());
-                btnSimpan.repaint();
-            }
-
-            public void mouseExited(MouseEvent e) {
-                btnSimpan.setBackground(Theme.WARNING);
-                btnSimpan.repaint();
-            }
-        });
-
-        buttonPanel.add(btnBatal);
-        buttonPanel.add(btnSimpan);
-        footerWrapper.add(buttonPanel, BorderLayout.CENTER);
-        return footerWrapper;
     }
 
     private JPanel createFormGroup(String title, JComponent input, String desc) {
@@ -451,19 +587,11 @@ public class ModalEditBahan extends JDialog {
         pnl.setLayout(new BoxLayout(pnl, BoxLayout.Y_AXIS));
         pnl.setOpaque(false);
         pnl.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        String hexColor = String.format("#%06x", (Theme.TEXT_SECONDARY.getRGB() & 0xFFFFFF));
-        String titleHtml = "<html><span style='color:" + hexColor + "; font-family:SansSerif; font-size:10px; font-weight:bold;'>" + title + "</span> <span style='color:#FF4747;'>*</span></html>";
-        JLabel lblTitle = new JLabel(titleHtml);
-        lblTitle.setBorder(new EmptyBorder(0, 0, 5, 0));
-        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-
+        pnl.add(createRequiredLabel(title));
         input.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
         input.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
         input.setAlignmentX(Component.LEFT_ALIGNMENT);
-        pnl.add(lblTitle);
         pnl.add(input);
-
         if (desc != null) {
             JLabel lblDesc = new JLabel(desc);
             lblDesc.setForeground(Theme.TEXT_SECONDARY);
@@ -475,6 +603,15 @@ public class ModalEditBahan extends JDialog {
         return pnl;
     }
 
+    private JLabel createRequiredLabel(String title) {
+        String hexColor = String.format("#%06x", (Theme.TEXT_SECONDARY.getRGB() & 0xFFFFFF));
+        String titleHtml = "<html><span style='color:" + hexColor + "; font-family:SansSerif; font-size:10px; font-weight:bold;'>" + title + "</span> <span style='color:#FF4747;'>*</span></html>";
+        JLabel lblTitle = new JLabel(titleHtml);
+        lblTitle.setBorder(new EmptyBorder(0, 0, 5, 0));
+        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return lblTitle;
+    }
+
     private RoundedPanel wrapInput(JComponent inputComp) {
         RoundedPanel wrapper = new RoundedPanel(12, Theme.CARD);
         wrapper.setLayout(new BorderLayout());
@@ -484,30 +621,131 @@ public class ModalEditBahan extends JDialog {
     }
 
     private JTextField createRawTextField(String placeholder) {
-        JTextField txt = new JTextField();
+        JTextField txt = new JTextField(placeholder);
         txt.setOpaque(false);
         txt.setBorder(BorderFactory.createEmptyBorder(0, 15, 0, 15));
-        txt.setForeground(Theme.TEXT_PRIMARY);
+        txt.setForeground(Theme.TEXT_SECONDARY);
         txt.setFont(new Font("SansSerif", Font.PLAIN, 13));
         txt.setCaretColor(Theme.TEXT_PRIMARY);
-        txt.setText(placeholder);
-        txt.setForeground(Theme.TEXT_SECONDARY);
         txt.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
-                if (txt.getText().equals(placeholder) || txt.getText().equals("Memuat data...") || txt.getText().equals("Memuat...")) {
+                if (txt.getText().equals(placeholder) || txt.getText().contains("Memuat")) {
                     txt.setText("");
                     txt.setForeground(Theme.TEXT_PRIMARY);
                 }
             }
 
             public void focusLost(java.awt.event.FocusEvent evt) {
-                if (txt.getText().isEmpty()) {
+                if (txt.getText().trim().isEmpty()) {
                     txt.setText(placeholder);
                     txt.setForeground(Theme.TEXT_SECONDARY);
                 }
             }
         });
         return txt;
+    }
+
+    private JPanel createThinLine() {
+        JPanel line = new JPanel();
+        line.setBackground(Theme.BORDER);
+        line.setMaximumSize(new Dimension(Integer.MAX_VALUE, 1));
+        line.setPreferredSize(new Dimension(Integer.MAX_VALUE, 1));
+        line.setAlignmentX(Component.LEFT_ALIGNMENT);
+        return line;
+    }
+
+    private void enableWindowDrag(JPanel header) {
+        header.addMouseListener(new MouseAdapter() {
+            public void mousePressed(MouseEvent e) {
+                initialClick = e.getPoint();
+            }
+        });
+        header.addMouseMotionListener(new MouseAdapter() {
+            public void mouseDragged(MouseEvent e) {
+                setLocation(getLocation().x + e.getX() - initialClick.x, getLocation().y + e.getY() - initialClick.y);
+            }
+        });
+    }
+
+    private RoundedPanel createCloseButton() {
+        RoundedPanel btnClose = new RoundedPanel(10, Theme.CARD);
+        btnClose.setPreferredSize(new Dimension(35, 35));
+        btnClose.setLayout(new BorderLayout());
+        btnClose.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JLabel lblClose = new JLabel("X", SwingConstants.CENTER);
+        lblClose.setFont(new Font("SansSerif", Font.BOLD, 12));
+        lblClose.setForeground(Theme.TEXT_SECONDARY);
+        btnClose.add(lblClose, BorderLayout.CENTER);
+        btnClose.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                dispose();
+            }
+
+            public void mouseEntered(MouseEvent e) {
+                btnClose.setBackground(Theme.BORDER);
+                btnClose.repaint();
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btnClose.setBackground(Theme.CARD);
+                btnClose.repaint();
+            }
+        });
+        return btnClose;
+    }
+
+    private RoundedPanel createPrimaryButton(String text, Runnable action) {
+        RoundedPanel btn = new RoundedPanel(12, Theme.WARNING);
+        btn.setPreferredSize(new Dimension(180, 40));
+        btn.setLayout(new BorderLayout());
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JLabel lbl = new JLabel(text, SwingConstants.CENTER);
+        lbl.setForeground(Color.WHITE);
+        lbl.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btn.add(lbl, BorderLayout.CENTER);
+        btn.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                action.run();
+            }
+
+            public void mouseEntered(MouseEvent e) {
+                btn.setBackground(Theme.WARNING.brighter());
+                btn.repaint();
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btn.setBackground(Theme.WARNING);
+                btn.repaint();
+            }
+        });
+        return btn;
+    }
+
+    private RoundedPanel createGhostButton(String text, Runnable action) {
+        RoundedPanel btn = new RoundedPanel(12, Theme.CARD);
+        btn.setPreferredSize(new Dimension(90, 40));
+        btn.setLayout(new BorderLayout());
+        btn.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        JLabel lbl = new JLabel(text, SwingConstants.CENTER);
+        lbl.setForeground(Theme.TEXT_PRIMARY);
+        lbl.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btn.add(lbl, BorderLayout.CENTER);
+        btn.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent e) {
+                action.run();
+            }
+
+            public void mouseEntered(MouseEvent e) {
+                btn.setBackground(Theme.BORDER);
+                btn.repaint();
+            }
+
+            public void mouseExited(MouseEvent e) {
+                btn.setBackground(Theme.CARD);
+                btn.repaint();
+            }
+        });
+        return btn;
     }
 
     private void styleComboBox(JComboBox<?> cb) {
@@ -580,128 +818,6 @@ public class ModalEditBahan extends JDialog {
                 return btn;
             }
         });
-    }
-
-    private JPanel buildSatuanGroup() {
-        JPanel pnlSatuan = new JPanel();
-        pnlSatuan.setLayout(new BoxLayout(pnlSatuan, BoxLayout.Y_AXIS));
-        pnlSatuan.setOpaque(false);
-        pnlSatuan.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        String hexColor = String.format("#%06x", (Theme.TEXT_SECONDARY.getRGB() & 0xFFFFFF));
-        String titleHtml = "<html><span style='color:" + hexColor + "; font-family:SansSerif; font-size:10px; font-weight:bold;'>SATUAN</span> <span style='color:#FF4747;'>*</span></html>";
-        JLabel lblTitle = new JLabel(titleHtml);
-        lblTitle.setBorder(new EmptyBorder(0, 0, 5, 0));
-        lblTitle.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        satuanInputWrapper = new JPanel(new CardLayout());
-        satuanInputWrapper.setOpaque(false);
-        satuanInputWrapper.setAlignmentX(Component.LEFT_ALIGNMENT);
-        satuanInputWrapper.setMaximumSize(new Dimension(Integer.MAX_VALUE, 42));
-        satuanInputWrapper.setPreferredSize(new Dimension(Integer.MAX_VALUE, 42));
-
-        cbSatuan = new JComboBox<>();
-        styleComboBox(cbSatuan);
-        txtSatuanBaru = createRawTextField("Ketik satuan baru...");
-
-        satuanInputWrapper.add(wrapInput(cbSatuan), "COMBO");
-        satuanInputWrapper.add(wrapInput(txtSatuanBaru), "TEXT");
-
-        JPanel toggleContainer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
-        toggleContainer.setOpaque(false);
-        toggleContainer.setAlignmentX(Component.LEFT_ALIGNMENT);
-
-        String hexPrimary = String.format("#%06x", (Theme.WARNING.getRGB() & 0xFFFFFF));
-        String hexDanger = String.format("#%06x", (Theme.RED.getRGB() & 0xFFFFFF));
-
-        lblToggleSatuan = new JLabel("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
-        lblToggleSatuan.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        lblToggleSatuan.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        lblToggleSatuan.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent e) {
-                isSatuanBaruMode = !isSatuanBaruMode;
-                CardLayout cl = (CardLayout) (satuanInputWrapper.getLayout());
-                if (isSatuanBaruMode) {
-                    cl.show(satuanInputWrapper, "TEXT");
-                    lblToggleSatuan.setText("<html><u style='color:" + hexDanger + ";'>batal, pilih dari daftar</u></html>");
-                    txtSatuanBaru.requestFocus();
-                } else {
-                    cl.show(satuanInputWrapper, "COMBO");
-                    lblToggleSatuan.setText("<html><u style='color:" + hexPrimary + ";'>tambahkan satuan baru</u></html>");
-                }
-            }
-        });
-
-        toggleContainer.add(lblToggleSatuan);
-        pnlSatuan.add(lblTitle);
-        pnlSatuan.add(satuanInputWrapper);
-        pnlSatuan.add(toggleContainer);
-        return pnlSatuan;
-    }
-
-    private void handleSimpan() {
-        try {
-            String nama = txtNama.getText().trim();
-            if (nama.isEmpty() || nama.startsWith("cth.") || nama.equals("Memuat data...")) {
-                throw new Exception("Nama bahan tidak boleh kosong!");
-            }
-
-            ComboItem sup = (ComboItem) cbSupplier.getSelectedItem();
-            if (sup == null || sup.getKey() == -1) {
-                throw new Exception("Silakan pilih Supplier yang valid!");
-            }
-
-            String satuan = "";
-            if (isSatuanBaruMode) {
-                satuan = txtSatuanBaru.getText().trim();
-                if (satuan.isEmpty() || satuan.equalsIgnoreCase("Ketik satuan baru...")) {
-                    throw new Exception("Kolom satuan baru tidak boleh kosong!");
-                }
-            } else {
-                satuan = cbSatuan.getSelectedItem() != null ? cbSatuan.getSelectedItem().toString() : "";
-                if (satuan.isEmpty() || satuan.contains("Pilih") || satuan.contains("Memuat")) {
-                    throw new Exception("Silakan pilih satuan dari daftar!");
-                }
-            }
-
-            String rawQty = txtQty.getText().replaceAll("[^\\d]", "");
-            String rawMin = txtMinStok.getText().replaceAll("[^\\d]", "");
-            String rawHarga = txtHarga.getText().replaceAll("[^\\d]", "");
-
-            if (rawQty.isEmpty()) {
-                throw new Exception("QTY (Stok) harus diisi dengan angka!");
-            }
-            if (rawMin.isEmpty()) {
-                throw new Exception("Minimal Stok harus diisi dengan angka!");
-            }
-            if (rawHarga.isEmpty()) {
-                throw new Exception("Harga Beli harus diisi dengan angka!");
-            }
-
-            double qty = Double.parseDouble(rawQty);
-            double min = Double.parseDouble(rawMin);
-            double harga = Double.parseDouble(rawHarga);
-
-            if (qty <= 0) {
-                throw new Exception("QTY (Stok) harus lebih dari 0!");
-            }
-            if (min <= 0) {
-                throw new Exception("Minimal Stok harus lebih dari 0!");
-            }
-            if (harga <= 0) {
-                throw new Exception("Harga Beli harus lebih dari 0!");
-            }
-
-            // Panggil fungsi UPDATE dari DAO
-            if (bahanDAO.updateTransaksiBahan(targetIdBahan, nama, sup.getKey(), satuan, qty, min, harga)) {
-                isSaved = true;
-                dispose();
-            } else {
-                throw new Exception("Gagal menyimpan perubahan ke database!");
-            }
-        } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Peringatan Validasi", JOptionPane.WARNING_MESSAGE);
-        }
     }
 
     public boolean isSaved() {

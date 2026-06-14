@@ -197,10 +197,18 @@ public class ModalRiwayat extends JDialog {
     }
 
     private void handleDelete(String id) {
-        int confirm = JOptionPane.showConfirmDialog(this, "Apakah Anda yakin ingin menghapus data transaksi ini secara permanen?", "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Apakah Anda yakin ingin menghapus data transaksi ini secara permanen?",
+                "Konfirmasi Hapus",
+                JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
-            JOptionPane.showMessageDialog(this, "Data transaksi dihapus.");
-            refreshData();
+            if (bahanDAO.deleteRiwayatById(id)) {
+                JOptionPane.showMessageDialog(this, "Data transaksi berhasil dihapus dari database.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                refreshData();
+            } else {
+                JOptionPane.showMessageDialog(this, "Gagal menghapus data transaksi.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
         }
     }
 
