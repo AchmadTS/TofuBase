@@ -17,6 +17,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
+import models.BahanBakuModel;
 
 public class ModalEditBahan extends JDialog {
 
@@ -298,17 +299,23 @@ public class ModalEditBahan extends JDialog {
                     return;
                 }
 
-                String current = txtMinStok.getText().trim();
-                if (!current.equals(originalMinStok) && !current.isEmpty() && !current.equals("Memuat...")) {
-                    int choice = JOptionPane.showConfirmDialog(ModalEditBahan.this, "MIN STOK yang disimpan akan menjadi batas baru di Data Master. Lanjutkan?", "Konfirmasi Min Stok", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
-                    if (choice == JOptionPane.OK_OPTION) {
-                        alertMinStokShown = true;
-                    } else {
-                        isInitializing = true;
-                        txtMinStok.setText(originalMinStok);
-                        isInitializing = false;
+                SwingUtilities.invokeLater(() -> {
+                    if (isInitializing || alertMinStokShown) {
+                        return;
                     }
-                }
+
+                    String current = txtMinStok.getText().trim();
+                    if (!current.equals(originalMinStok) && !current.isEmpty() && !current.equals("Memuat...")) {
+                        int choice = JOptionPane.showConfirmDialog(ModalEditBahan.this, "MIN STOK yang disimpan akan menjadi batas baru di Data Master. Lanjutkan?", "Konfirmasi Min Stok", JOptionPane.OK_CANCEL_OPTION, JOptionPane.INFORMATION_MESSAGE);
+                        if (choice == JOptionPane.OK_OPTION) {
+                            alertMinStokShown = true;
+                        } else {
+                            isInitializing = true;
+                            txtMinStok.setText(originalMinStok);
+                            isInitializing = false;
+                        }
+                    }
+                });
             }
         });
     }
@@ -317,6 +324,7 @@ public class ModalEditBahan extends JDialog {
         cbSupplier.removeAllItems();
         cbSupplier.addItem(new ComboItem(-1, "Memuat data..."));
         cbSupplier.setEnabled(false);
+
         cbSatuan.removeAllItems();
         cbSatuan.addItem("Memuat data...");
         cbSatuan.setEnabled(false);
@@ -324,7 +332,7 @@ public class ModalEditBahan extends JDialog {
         new SwingWorker<Void, Void>() {
             Map<Integer, String> suppliers;
             List<String> satuans;
-            Map<String, Object> data;
+            BahanBakuModel data;
 
             @Override
             protected Void doInBackground() {
@@ -338,7 +346,6 @@ public class ModalEditBahan extends JDialog {
             protected void done() {
                 isInitializing = true;
 
-                // Suppliers
                 cbSupplier.removeAllItems();
                 cbSupplier.addItem(new ComboItem(-1, "Pilih supplier..."));
                 for (Map.Entry<Integer, String> entry : suppliers.entrySet()) {
@@ -346,7 +353,6 @@ public class ModalEditBahan extends JDialog {
                 }
                 cbSupplier.setEnabled(true);
 
-                // Setup Satuans
                 cbSatuan.removeAllItems();
                 cbSatuan.addItem("Pilih satuan...");
                 for (String s : satuans) {
@@ -354,12 +360,11 @@ public class ModalEditBahan extends JDialog {
                 }
                 cbSatuan.setEnabled(true);
 
-                // Auto-fill data
-                if (data != null && !data.isEmpty()) {
-                    txtNama.setText((String) data.get("nama"));
+                if (data != null) {
+                    txtNama.setText(data.getNama());
                     txtNama.setForeground(Theme.TEXT_PRIMARY);
 
-                    int idSup = (Integer) data.get("id_supplier");
+                    int idSup = data.getIdSupplier();
                     for (int i = 0; i < cbSupplier.getItemCount(); i++) {
                         if (cbSupplier.getItemAt(i).getKey() == idSup) {
                             cbSupplier.setSelectedIndex(i);
@@ -367,18 +372,19 @@ public class ModalEditBahan extends JDialog {
                         }
                     }
 
-                    originalSatuan = (String) data.get("satuan");
+                    originalSatuan = data.getSatuan();
                     cbSatuan.setSelectedItem(originalSatuan);
 
                     java.text.NumberFormat nf = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
-                    txtQty.setText(nf.format((Double) data.get("stok")));
+
+                    txtQty.setText(nf.format(data.getStok()));
                     txtQty.setForeground(Theme.TEXT_PRIMARY);
 
-                    originalMinStok = nf.format((Double) data.get("min_stok"));
+                    originalMinStok = nf.format(data.getMinStok());
                     txtMinStok.setText(originalMinStok);
                     txtMinStok.setForeground(Theme.TEXT_PRIMARY);
 
-                    txtHarga.setText("Rp " + nf.format((Double) data.get("harga_beli")));
+                    txtHarga.setText("Rp " + nf.format(data.getHargaBeli()));
                     txtHarga.setForeground(Theme.TEXT_PRIMARY);
                 }
 
@@ -393,21 +399,20 @@ public class ModalEditBahan extends JDialog {
             return;
         }
 
-        new SwingWorker<Map<String, Object>, Void>() {
+        new SwingWorker<BahanBakuModel, Void>() {
             @Override
-            protected Map<String, Object> doInBackground() {
+            protected BahanBakuModel doInBackground() {
                 return bahanDAO.cekDetailBahan(nama);
             }
 
             @Override
             protected void done() {
                 try {
-                    Map<String, Object> detail = get();
-                    if (detail != null && !detail.isEmpty()) {
+                    BahanBakuModel detail = get();
+                    if (detail != null) {
                         isInitializing = true;
-                        String satuan = (String) detail.get("satuan");
-                        double minStok = (Double) detail.get("min_stok");
-
+                        String satuan = detail.getSatuan();
+                        double minStok = detail.getMinStok();
                         if (isSatuanBaruMode) {
                             toggleSatuanMode();
                         }
@@ -492,7 +497,16 @@ public class ModalEditBahan extends JDialog {
         double min = Double.parseDouble(txtMinStok.getText().replaceAll("[^\\d]", ""));
         double harga = Double.parseDouble(txtHarga.getText().replaceAll("[^\\d]", ""));
 
-        if (bahanDAO.updateTransaksiBahan(targetIdBahan, nama, sup.getKey(), satuan, qty, min, harga)) {
+        BahanBakuModel bahanEdit = new BahanBakuModel();
+        bahanEdit.setIdBahan(Integer.parseInt(targetIdBahan));
+        bahanEdit.setNama(nama);
+        bahanEdit.setIdSupplier(sup.getKey());
+        bahanEdit.setSatuan(satuan);
+        bahanEdit.setStok(qty);
+        bahanEdit.setMinStok(min);
+        bahanEdit.setHargaBeli(harga);
+
+        if (bahanDAO.updateTransaksiBahan(bahanEdit)) {
             isSaved = true;
             dispose();
         } else {

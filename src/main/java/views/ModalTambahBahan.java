@@ -18,6 +18,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
 import java.util.Map;
+import models.BahanBakuModel;
 
 public class ModalTambahBahan extends JDialog {
 
@@ -285,18 +286,18 @@ public class ModalTambahBahan extends JDialog {
             return;
         }
 
-        new SwingWorker<Map<String, Object>, Void>() {
+        new SwingWorker<BahanBakuModel, Void>() { // <-- Return Model
             @Override
-            protected Map<String, Object> doInBackground() {
+            protected BahanBakuModel doInBackground() {
                 return bahanDAO.cekDetailBahan(nama);
             }
 
             @Override
             protected void done() {
                 try {
-                    Map<String, Object> detail = get();
-                    if (detail != null && !detail.isEmpty()) {
-                        applyAutofill(detail);
+                    BahanBakuModel detail = get();
+                    if (detail != null) {
+                        applyAutofill(detail); // <-- Kirim Model
                     } else {
                         resetAutofill();
                     }
@@ -307,16 +308,16 @@ public class ModalTambahBahan extends JDialog {
         }.execute();
     }
 
-    private void applyAutofill(Map<String, Object> detail) {
+    private void applyAutofill(BahanBakuModel detail) { // <-- Terima Model
         if (isSatuanBaruMode) {
             toggleSatuanMode();
         }
 
-        cbSatuan.setSelectedItem((String) detail.get("satuan"));
+        cbSatuan.setSelectedItem(detail.getSatuan()); // <-- Pakai Getter
         cbSatuan.setEnabled(false);
 
         java.text.NumberFormat formatter = java.text.NumberFormat.getInstance(new java.util.Locale("id", "ID"));
-        txtMinStok.setText(formatter.format((Double) detail.get("min_stok")));
+        txtMinStok.setText(formatter.format(detail.getMinStok())); // <-- Pakai Getter
         txtMinStok.setEnabled(false);
 
         if (lblToggleSatuan != null) {
@@ -395,7 +396,16 @@ public class ModalTambahBahan extends JDialog {
         double min = Double.parseDouble(txtMinStok.getText().replaceAll("[^\\d]", ""));
         double harga = Double.parseDouble(txtHarga.getText().replaceAll("[^\\d]", ""));
 
-        if (bahanDAO.insertBahanBaru(nama, sup.getKey(), satuan, qty, min, harga)) {
+        // <-- BUNGKUS DATA KE DALAM MODEL -->
+        BahanBakuModel bahanBaru = new BahanBakuModel();
+        bahanBaru.setNama(nama);
+        bahanBaru.setIdSupplier(sup.getKey());
+        bahanBaru.setSatuan(satuan);
+        bahanBaru.setStok(qty);
+        bahanBaru.setMinStok(min);
+        bahanBaru.setHargaBeli(harga);
+
+        if (bahanDAO.insertBahanBaru(bahanBaru)) { // <-- Kirim Model ke DAO
             isSaved = true;
             dispose();
         } else {

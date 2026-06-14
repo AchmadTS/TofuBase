@@ -51,7 +51,6 @@ public class Sidebar extends JPanel {
         add(menuLabel);
         add(Box.createVerticalStrut(10));
 
-        // List Menu Utama
         add(createNavMenuItem("⊞", "Dashboard", activeMenuName));
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("○", "Bahan Baku", activeMenuName));
@@ -60,18 +59,23 @@ public class Sidebar extends JPanel {
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("◇", "Stok & Distribusi", activeMenuName));
 
-        add(Box.createVerticalStrut(30));
+        // --- HAK AKSES ---
+        String role = (userRole != null) ? userRole.trim().toLowerCase() : "";
+        boolean isOwner = role.equals("owner");
+        boolean isAdmin = role.equals("admin");
 
-        // KEUANGAN
-        JLabel keuanganLabel = new JLabel("KEUANGAN");
-        keuanganLabel.setFont(new Font("SansSerif", Font.BOLD, 10));
-        keuanganLabel.setForeground(Theme.TEXT_SECONDARY);
-        keuanganLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-        add(keuanganLabel);
-        add(Box.createVerticalStrut(10));
-
-        add(createNavMenuItem("↗", "Laporan Keuangan", activeMenuName));
-
+        if (isOwner || isAdmin) {
+            add(Box.createVerticalStrut(30));
+            JLabel keuanganLabel = new JLabel("KEUANGAN");
+            keuanganLabel.setFont(new Font("SansSerif", Font.BOLD, 10));
+            keuanganLabel.setForeground(Theme.TEXT_SECONDARY);
+            keuanganLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+            add(keuanganLabel);
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("↗", "Laporan Keuangan", activeMenuName));
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("⚙", "Kelola User", activeMenuName));
+        }
         add(Box.createVerticalGlue());
 
         // --- PROFIL USER ---
@@ -83,17 +87,14 @@ public class Sidebar extends JPanel {
 
         RoundedPanel avatar = new RoundedPanel(36, new Color(150, 200, 255));
         avatar.setPreferredSize(new Dimension(36, 36));
-        avatar.setMinimumSize(new Dimension(36, 36));
-        avatar.setMaximumSize(new Dimension(36, 36));
         avatar.setLayout(new BorderLayout());
 
         String initials = "US";
         if (userName != null && !userName.trim().isEmpty()) {
             String[] words = userName.trim().split("\\s+");
-            if (words.length == 1) {
-                initials = words[0].substring(0, Math.min(2, words[0].length())).toUpperCase();
-            } else {
-                initials = (words[0].substring(0, 1) + words[words.length - 1].substring(0, 1)).toUpperCase();
+            initials = words[0].substring(0, 1).toUpperCase();
+            if (words.length > 1) {
+                initials += words[words.length - 1].substring(0, 1).toUpperCase();
             }
         }
 
@@ -104,29 +105,26 @@ public class Sidebar extends JPanel {
 
         JPanel userInfo = new JPanel(new GridLayout(2, 1));
         userInfo.setOpaque(false);
-
-        JLabel lblUserName = new JLabel(userName != null ? userName : "User Pabrik");
-        lblUserName.setForeground(Theme.TEXT_PRIMARY);
-        lblUserName.setFont(new Font("SansSerif", Font.BOLD, 14));
-
-        JLabel lblUserRole = new JLabel(userRole != null ? userRole : "Staff");
-        lblUserRole.setForeground(Theme.TEXT_SECONDARY);
-        lblUserRole.setFont(new Font("SansSerif", Font.PLAIN, 12));
-
-        userInfo.add(lblUserName);
-        userInfo.add(lblUserRole);
+        userInfo.add(new JLabel(userName != null ? userName : "User Pabrik") {
+            {
+                setForeground(Theme.TEXT_PRIMARY);
+                setFont(new Font("SansSerif", Font.BOLD, 14));
+            }
+        });
+        userInfo.add(new JLabel(userRole != null ? userRole : "Staff") {
+            {
+                setForeground(Theme.TEXT_SECONDARY);
+                setFont(new Font("SansSerif", Font.PLAIN, 12));
+            }
+        });
 
         userPanel.add(avatar, BorderLayout.WEST);
         userPanel.add(userInfo, BorderLayout.CENTER);
         userPanel.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent e) {
-                JOptionPane optionPane = new JOptionPane("Apakah Anda yakin ingin keluar?", JOptionPane.QUESTION_MESSAGE, JOptionPane.YES_NO_OPTION);
-                JDialog dialog = optionPane.createDialog("Konfirmasi Log Out");
-                dialog.setLocationRelativeTo(null);
-                dialog.setVisible(true);
-                Object value = optionPane.getValue();
-                if (value instanceof Integer confirm && confirm == JOptionPane.YES_OPTION) {
+                int confirm = JOptionPane.showConfirmDialog(Sidebar.this, "Apakah Anda yakin ingin keluar?", "Konfirmasi Log Out", JOptionPane.YES_NO_OPTION);
+                if (confirm == JOptionPane.YES_OPTION) {
                     Window window = SwingUtilities.getWindowAncestor(Sidebar.this);
                     if (window != null) {
                         window.dispose();

@@ -84,10 +84,19 @@ public class LoginController {
         }
 
         try {
-            String[] userData = userDAO.authenticateUser(email, password);
-            if (userData != null) {
-                String namaUser = userData[0];
-                String roleUser = userData[1];
+            models.User loggedInUser = userDAO.authenticateUser(email, password);
+
+            if (loggedInUser != null) {
+                String namaUser = loggedInUser.getNama();
+                String roleUser = "";
+                if (loggedInUser instanceof models.Owner) {
+                    roleUser = "Owner";
+                } else if (loggedInUser instanceof models.Admin) {
+                    roleUser = "Admin";
+                } else if (loggedInUser instanceof models.Staff) {
+                    roleUser = "Staff";
+                }
+
                 savePreferences(email, password);
                 view.dispose();
                 new MainFrame(namaUser, roleUser).setVisible(true);

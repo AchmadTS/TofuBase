@@ -33,23 +33,24 @@ public class DatabaseSeeder {
         "userSeeder.sql",
         "supplierSeeder.sql",
         "pelangganSeeder.sql",
-        //        "produkSeeder.sql",
+        "produkSeeder.sql",
         "adminSeeder.sql",
         "ownerSeeder.sql",
-        "staffSeeder.sql", //        "bahanBakuSeeder.sql",
-    //        "produksiSeeder.sql",
-    //        "recordProduksiSeeder.sql",
-    //        "penjualanSeeder.sql",
-    //        "recordPenjualanSeeder.sql",
-    //        "pemasukanSeeder.sql",
-    //        "pengeluaranSeeder.sql",
-    //        "laporanKeuanganSeeder.sql",
-    //        "inventarisSeeder.sql"
+        "staffSeeder.sql",
+//        "bahanBakuSeeder.sql",
+//        "produksiSeeder.sql",
+//        "recordProduksiSeeder.sql",
+//        "penjualanSeeder.sql",
+//        "recordPenjualanSeeder.sql",
+//        "pemasukanSeeder.sql",
+//        "pengeluaranSeeder.sql",
+//        "laporanKeuanganSeeder.sql",
+//        "inventarisSeeder.sql"
     };
 
     public static void main(String[] args) {
         try (
-                Connection conn = DatabaseConfig.getKoneksi(); Statement stmt = conn.createStatement()) {
+            Connection conn = DatabaseConfig.getKoneksi(); Statement stmt = conn.createStatement()) {
             System.out.println("=================================");
             System.out.println("KONEKSI BERHASIL");
             System.out.println("=================================");

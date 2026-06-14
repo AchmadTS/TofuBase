@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import models.BahanBakuModel;
 
 public class BahanBakuDAO {
 
@@ -33,7 +34,7 @@ public class BahanBakuDAO {
             }
 
             // Stok Kedelai & Status
-            String queryKed = "SELECT SUM(stok) AS total_stok, MAX(min_stok) AS batas_stok FROM bahan_baku WHERE nama LIKE ?";
+            String queryKed = "SELECT SUM(stok) AS total_stok, CAST(SUBSTRING_INDEX(GROUP_CONCAT(min_stok ORDER BY updated_at DESC), ',', 1) AS DECIMAL) AS batas_stok FROM bahan_baku WHERE nama LIKE ?";
             try (PreparedStatement ps = conn.prepareStatement(queryKed)) {
                 ps.setString(1, "%Kedelai%");
                 try (ResultSet rs = ps.executeQuery()) {
@@ -98,7 +99,7 @@ public class BahanBakuDAO {
         String query = "SELECT MIN(b.id_bahan) AS id_bahan, b.nama, b.satuan, "
                 + "SUM(b.stok) AS total_stok, "
                 + "SUM(b.stok * b.harga_beli) / NULLIF(SUM(b.stok), 0) AS rata_harga, "
-                + "MAX(b.min_stok) AS batas_stok "
+                + "CAST(SUBSTRING_INDEX(GROUP_CONCAT(b.min_stok ORDER BY b.updated_at DESC), ',', 1) AS DECIMAL) AS batas_stok "
                 + "FROM (SELECT nama, satuan FROM bahan_baku " + whereClause
                 + "GROUP BY nama, satuan ORDER BY nama ASC LIMIT ? OFFSET ?) AS filter_b "
                 + "JOIN bahan_baku b ON b.nama = filter_b.nama AND b.satuan = filter_b.satuan "
@@ -172,16 +173,15 @@ public class BahanBakuDAO {
         return satuanList;
     }
 
-    public boolean insertBahanBaru(String nama, int idSupplier, String satuan, double stok, double minStok, double hargaBeli) {
+    public boolean insertBahanBaru(BahanBakuModel bahan) {
         String insertQuery = "INSERT INTO bahan_baku (nama, id_supplier, satuan, stok, min_stok, harga_beli) VALUES (?, ?, ?, ?, ?, ?)";
-
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(insertQuery)) {
-            ps.setString(1, nama);
-            ps.setInt(2, idSupplier);
-            ps.setString(3, satuan);
-            ps.setDouble(4, stok);
-            ps.setDouble(5, minStok);
-            ps.setDouble(6, hargaBeli);
+            ps.setString(1, bahan.getNama());
+            ps.setInt(2, bahan.getIdSupplier());
+            ps.setString(3, bahan.getSatuan());
+            ps.setDouble(4, bahan.getStok());
+            ps.setDouble(5, bahan.getMinStok());
+            ps.setDouble(6, bahan.getHargaBeli());
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
@@ -189,16 +189,16 @@ public class BahanBakuDAO {
         }
     }
 
-    public Map<String, Object> cekDetailBahan(String namaBahan) {
-        Map<String, Object> result = new HashMap<>();
+    public BahanBakuModel cekDetailBahan(String namaBahan) {
         String query = "SELECT satuan, min_stok FROM bahan_baku WHERE nama = ? LIMIT 1";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    result.put("satuan", rs.getString("satuan"));
-                    result.put("min_stok", rs.getDouble("min_stok"));
-                    return result;
+                    BahanBakuModel model = new BahanBakuModel();
+                    model.setSatuan(rs.getString("satuan"));
+                    model.setMinStok(rs.getDouble("min_stok"));
+                    return model;
                 }
             }
         } catch (Exception e) {
@@ -280,44 +280,46 @@ public class BahanBakuDAO {
         return result;
     }
 
-    public Map<String, Object> getTransaksiById(String idBahan) {
-        Map<String, Object> result = new HashMap<>();
-        String query = "SELECT nama, id_supplier, satuan, stok, min_stok, harga_beli FROM bahan_baku WHERE id_bahan = ?";
+    public BahanBakuModel getTransaksiById(String idBahan) {
+        String query = "SELECT id_bahan, nama, id_supplier, satuan, stok, min_stok, harga_beli FROM bahan_baku WHERE id_bahan = ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setInt(1, Integer.parseInt(idBahan));
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    result.put("nama", rs.getString("nama"));
-                    result.put("id_supplier", rs.getInt("id_supplier"));
-                    result.put("satuan", rs.getString("satuan"));
-                    result.put("stok", rs.getDouble("stok"));
-                    result.put("min_stok", rs.getDouble("min_stok"));
-                    result.put("harga_beli", rs.getDouble("harga_beli"));
+                    BahanBakuModel model = new BahanBakuModel();
+                    model.setIdBahan(rs.getInt("id_bahan"));
+                    model.setNama(rs.getString("nama"));
+                    model.setIdSupplier(rs.getInt("id_supplier"));
+                    model.setSatuan(rs.getString("satuan"));
+                    model.setStok(rs.getDouble("stok"));
+                    model.setMinStok(rs.getDouble("min_stok"));
+                    model.setHargaBeli(rs.getDouble("harga_beli"));
+                    return model;
                 }
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return result;
+        return null;
     }
 
-    public boolean updateTransaksiBahan(String idBahan, String nama, int idSupplier, String satuan, double qty, double minStok, double hargaBeli) {
+    public boolean updateTransaksiBahan(BahanBakuModel bahan) {
         String query = "UPDATE bahan_baku SET nama = ?, id_supplier = ?, satuan = ?, stok = ?, min_stok = ?, harga_beli = ? WHERE id_bahan = ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
-            ps.setString(1, nama);
-            ps.setInt(2, idSupplier);
-            ps.setString(3, satuan);
-            ps.setDouble(4, qty);
-            ps.setDouble(5, minStok);
-            ps.setDouble(6, hargaBeli);
-            ps.setInt(7, Integer.parseInt(idBahan));
+            ps.setString(1, bahan.getNama());
+            ps.setInt(2, bahan.getIdSupplier());
+            ps.setString(3, bahan.getSatuan());
+            ps.setDouble(4, bahan.getStok());
+            ps.setDouble(5, bahan.getMinStok());
+            ps.setDouble(6, bahan.getHargaBeli());
+            ps.setInt(7, bahan.getIdBahan());
             return ps.executeUpdate() > 0;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
-    
+
     public boolean deleteRiwayatById(String idBahan) {
         String query = "DELETE FROM bahan_baku WHERE id_bahan = ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
