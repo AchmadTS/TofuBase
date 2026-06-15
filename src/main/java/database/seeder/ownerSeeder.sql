@@ -1,1 +1,1 @@
-INSERT INTO `owner` (`id_owner`, `id_user`, `jabatan`, `level_akses`) VALUES (1, 1, 'Owner', 'owner');
+INSERT INTO `owner` (`id_owner`, `id_user`, `jabatan`, `level_akses`) VALUES (1, 4, 'Owner', 'owner');
