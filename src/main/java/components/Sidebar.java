@@ -53,6 +53,8 @@ public class Sidebar extends JPanel {
 
         add(createNavMenuItem("⊞", "Dashboard", activeMenuName));
         add(Box.createVerticalStrut(10));
+        add(createNavMenuItem("🚚", "Supplier", activeMenuName));
+        add(Box.createVerticalStrut(10));
         add(createNavMenuItem("○", "Bahan Baku", activeMenuName));
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("≡", "Produksi", activeMenuName));

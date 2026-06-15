@@ -14,24 +14,31 @@ public class Staff extends User {
     }
 
     @Override
-    public boolean login(String username, String password) {
+    public boolean verifikasiAksesMenu(String menuName) {
+        return switch (menuName) {
+            case "Bahan Baku" ->
+                inputBahanBaku();
+            case "Produksi" ->
+                inputHasilProduksi();
+            case "Stok & Distribusi", "Dashboard" ->
+                lihatData(menuName);
+            default -> {
+                System.err.println("[SECURITY BLOCK] Staff " + getNama() + " mencoba mengakses area terlarang: " + menuName);
+                yield false;
+            }
+        };
+    }
+
+    public boolean inputBahanBaku() {
         return true;
     }
 
-    @Override
-    public void logout() {
+    public boolean inputHasilProduksi() {
+        return true;
     }
 
-    public void inputBahanBaku() {
-        System.out.println("Akses buka form bahan baku...");
-    }
-
-    public void inputHasilProduksi() {
-        System.out.println("Akses form produksi...");
-    }
-
-    public void lihatData() {
-        System.out.println("Melihat data...");
+    public boolean lihatData(String modul) {
+        return true;
     }
 
     public String getJabatan() {

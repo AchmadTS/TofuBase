@@ -77,7 +77,6 @@ public class LoginController {
     private void handleLogin() {
         String email = view.getTxtEmail().getText().trim();
         String password = String.valueOf(view.getTxtPass().getPassword());
-
         if (email.isEmpty() || email.equals(EMAIL_PLACEHOLDER) || password.isEmpty() || password.equals(PASS_PLACEHOLDER)) {
             JOptionPane.showMessageDialog(view, "Email dan Kata Sandi tidak boleh kosong!", "Peringatan", JOptionPane.WARNING_MESSAGE);
             return;
@@ -85,21 +84,13 @@ public class LoginController {
 
         try {
             models.User loggedInUser = userDAO.authenticateUser(email, password);
-
             if (loggedInUser != null) {
-                String namaUser = loggedInUser.getNama();
-                String roleUser = "";
-                if (loggedInUser instanceof models.Owner) {
-                    roleUser = "Owner";
-                } else if (loggedInUser instanceof models.Admin) {
-                    roleUser = "Admin";
-                } else if (loggedInUser instanceof models.Staff) {
-                    roleUser = "Staff";
+                boolean isSessionStarted = loggedInUser.login(email, password);
+                if (isSessionStarted) {
+                    savePreferences(email, password);
+                    view.dispose();
+                    new MainFrame(loggedInUser).setVisible(true);
                 }
-
-                savePreferences(email, password);
-                view.dispose();
-                new MainFrame(namaUser, roleUser).setVisible(true);
             } else {
                 JOptionPane.showMessageDialog(view, "Email atau Kata Sandi salah!", "Login Gagal", JOptionPane.ERROR_MESSAGE);
             }

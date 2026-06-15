@@ -16,30 +16,45 @@ public class Admin extends User {
     }
 
     @Override
-    public boolean login(String username, String password) {
+    public boolean verifikasiAksesMenu(String menuName) {
+        return switch (menuName) {
+            case "Kelola User" ->
+                kelolaUser();
+            case "Bahan Baku", "Stok & Distribusi" ->
+                kelolaDataMaster(menuName);
+            case "Produksi" ->
+                kelolaProduksi();
+            case "Laporan Keuangan" ->
+                kelolaKeuangan();
+            case "Dashboard" ->
+                lihatLaporan();
+            default ->
+                false;
+        };
+    }
+
+    public boolean kelolaUser() {
         return true;
     }
 
-    @Override
-    public void logout() {
+    public boolean kelolaDataMaster(String modul) {
+        return true;
     }
 
-    public void kelolaUser() {
+    public boolean kelolaProduksi() {
+        return true;
     }
 
-    public void kelolaDataMaster() {
+    public boolean kelolaPenjualan() {
+        return true;
     }
 
-    public void kelolaProduksi() {
+    public boolean kelolaKeuangan() {
+        return true;
     }
 
-    public void kelolaPenjualan() {
-    }
-
-    public void kelolaKeuangan() {
-    }
-
-    public void lihatLaporan() {
+    public boolean lihatLaporan() {
+        return true;
     }
 
     public String getJabatan() {

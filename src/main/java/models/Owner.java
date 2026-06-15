@@ -12,30 +12,32 @@ public class Owner extends User {
     }
 
     @Override
-    public boolean login(String username, String password) {
+    public boolean verifikasiAksesMenu(String menuName) {
         return true;
     }
 
-    @Override
-    public void logout() {
+    public boolean kelolaUser() {
+        return true;
     }
 
-    public void kelolaUser() {
+    public boolean kelolaDataMaster() {
+        return true;
     }
 
-    public void kelolaDataMaster() {
+    public boolean kelolaProduksi() {
+        return true;
     }
 
-    public void kelolaProduksi() {
+    public boolean kelolaPenjualan() {
+        return true;
     }
 
-    public void kelolaPenjualan() {
+    public boolean kelolaKeuangan() {
+        return true;
     }
 
-    public void kelolaKeuangan() {
-    }
-
-    public void lihatLaporan() {
+    public boolean lihatLaporan() {
+        return true;
     }
 
     public String getJabatan() {

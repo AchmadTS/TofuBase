@@ -820,7 +820,6 @@ public class ModalEditBahan extends JDialog {
 
             @Override
             public void paintCurrentValue(Graphics g, Rectangle bounds, boolean hasFocus) {
-                @SuppressWarnings("unchecked")
                 ListCellRenderer<? super Object> renderer = (ListCellRenderer<? super Object>) comboBox.getRenderer();
                 Component c = renderer.getListCellRendererComponent(listBox, comboBox.getSelectedItem(), -1, false,
                         false);

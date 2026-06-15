@@ -16,8 +16,7 @@ public class BahanBakuModel {
     public BahanBakuModel() {
     }
 
-    public BahanBakuModel(int idBahan, String nama, int idSupplier, String satuan,
-            double stok, double minStok, double hargaBeli, Date createdAt) {
+    public BahanBakuModel(int idBahan, String nama, int idSupplier, String satuan, double stok, double minStok, double hargaBeli, Date createdAt) {
         this.idBahan = idBahan;
         this.nama = nama;
         this.idSupplier = idSupplier;
@@ -27,7 +26,7 @@ public class BahanBakuModel {
         this.hargaBeli = hargaBeli;
         this.createdAt = createdAt;
     }
-    
+
     public int getIdBahan() {
         return idBahan;
     }

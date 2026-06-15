@@ -20,8 +20,19 @@ public abstract class User {
         this.status = status;
     }
 
-    public abstract boolean login(String username, String password);
-    public abstract void logout();
+    public boolean login(String inputUsername, String inputPassword) {
+        if (this.email.equals(inputUsername) && this.password.equals(inputPassword)) {
+            this.status = "Online";
+            return true;
+        }
+        return false;
+    }
+
+    public void logout() {
+        this.status = "Offline";
+    }
+
+    public abstract boolean verifikasiAksesMenu(String menuName);
 
     public int getId() {
         return id;
