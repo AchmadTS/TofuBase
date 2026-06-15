@@ -146,8 +146,12 @@ public class BahanBaku extends JPanel {
                     Map<String, String> data = get();
                     String colorStr = data.getOrDefault("status_ked_color", "GRAY");
                     Color statusColor = resolveStatusColor(colorStr);
-
-                    lblTotalAset.setText(data.getOrDefault("aset", "0"));
+                    String aset = data.getOrDefault("aset", "0");
+                    if (!aset.contains("Rp")) {
+                        aset = "Rp " + aset;
+                    }
+                    aset = "<html>" + aset.replace("Jt", "<small>Jt</small>") + "</html>";
+                    lblTotalAset.setText(aset);
                     lblStokKedelai.setText(data.getOrDefault("kedelai", "0"));
                     lblStatusKedelai.setText(data.getOrDefault("status_ked_txt", "Tidak ada data"));
                     lblStatusKedelai.setForeground(statusColor);
@@ -202,6 +206,7 @@ public class BahanBaku extends JPanel {
 
         if (modal.isSaved()) {
             refreshData();
+            utils.DataNotifier.getInstance().notifyDataChanged();
         }
     }
 

@@ -29,6 +29,10 @@ public class Sidebar extends JPanel {
         setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
         setBorder(new EmptyBorder(20, 20, 20, 20));
 
+        String role = (userRole != null) ? userRole.trim().toLowerCase() : "";
+        boolean isOwner = role.equals("owner");
+        boolean isAdmin = role.equals("admin");
+
         JLabel title = new JLabel("TofuBase");
         title.setFont(new Font("SansSerif", Font.BOLD, 24));
         title.setForeground(Theme.TEXT_PRIMARY);
@@ -50,10 +54,13 @@ public class Sidebar extends JPanel {
         menuLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
         add(menuLabel);
         add(Box.createVerticalStrut(10));
-
         add(createNavMenuItem("⊞", "Dashboard", activeMenuName));
-        add(Box.createVerticalStrut(10));
-        add(createNavMenuItem("🚚", "Supplier", activeMenuName));
+        
+        if (isOwner) {
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("🚚", "Supplier", activeMenuName));
+        }
+        
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("○", "Bahan Baku", activeMenuName));
         add(Box.createVerticalStrut(10));
@@ -62,10 +69,6 @@ public class Sidebar extends JPanel {
         add(createNavMenuItem("◇", "Stok & Distribusi", activeMenuName));
 
         // --- HAK AKSES ---
-        String role = (userRole != null) ? userRole.trim().toLowerCase() : "";
-        boolean isOwner = role.equals("owner");
-        boolean isAdmin = role.equals("admin");
-
         if (isOwner || isAdmin) {
             add(Box.createVerticalStrut(30));
             JLabel keuanganLabel = new JLabel("KEUANGAN");

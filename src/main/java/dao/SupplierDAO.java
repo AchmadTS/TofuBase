@@ -165,4 +165,18 @@ public class SupplierDAO {
         }
         return list;
     }
+
+    public boolean isSupplierInUse(int idSupplier) {
+        String query = "SELECT COUNT(*) FROM bahan_baku WHERE id_supplier = ?";
+        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setInt(1, idSupplier);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1) > 0;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
 }

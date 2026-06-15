@@ -36,7 +36,8 @@ public class SupplierPanel extends JPanel {
         setBackground(Theme.BG);
         initializeDynamicComponents();
         add(buildMainContent(), BorderLayout.CENTER);
-        startAutoRefresh();
+        setupListeners();
+        utils.DataNotifier.getInstance().addListener(this::refreshData);
         refreshData();
     }
 
@@ -46,19 +47,13 @@ public class SupplierPanel extends JPanel {
         lblTotalNilai = createAnimatedLabel();
     }
 
-    private void startAutoRefresh() {
+    private void setupListeners() {
         this.addComponentListener(new java.awt.event.ComponentAdapter() {
             @Override
             public void componentShown(java.awt.event.ComponentEvent evt) {
-                refreshData();
+                fetchTopCardsData();
             }
         });
-
-        new Timer(15_000, e -> {
-            if (isShowing()) {
-                refreshData();
-            }
-        }).start();
     }
 
     @Override
@@ -127,14 +122,14 @@ public class SupplierPanel extends JPanel {
         topCardsPanel.setBackground(Theme.BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
         topCardsPanel.add(createStatCard("TOTAL SUPPLIER", lblTotalSupplier, "Pemasok terdaftar", Theme.TEXT_SECONDARY));
-        topCardsPanel.add(createStatCard("BAHAN DISUPLAI", lblBahanDisuplai, "Jenis bahan aktif", Theme.GREEN));
+        topCardsPanel.add(createStatCard("BAHAN DISUPLAI", lblBahanDisuplai, "▲ Jenis bahan aktif", Theme.GREEN));
         topCardsPanel.add(createStatCard("TOTAL NILAI PASOKAN", lblTotalNilai, "Total aset nilai", Theme.TEXT_SECONDARY));
         return topCardsPanel;
     }
 
     private ActivityTable buildSupplierTable() {
         String[] headers = {"ID", "Nama Supplier", "Kontak", "Bahan Disuplai", "Aksi"};
-        tableSupplier = new ActivityTable("Daftar Supplier", headers, 5, new ActivityTable.DataProvider() {
+        tableSupplier = new ActivityTable("Daftar Supplier", headers, 4, new ActivityTable.DataProvider() {
             @Override
             public int getTotalRowCount(String keyword) {
                 return supplierDAO.getTableTotalRows(keyword);
@@ -148,29 +143,57 @@ public class SupplierPanel extends JPanel {
                     List<String> bahanList = s.getDaftarBahan();
                     Set<String> uniqueBahan = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
                     uniqueBahan.addAll(bahanList);
-
-                    String displayBahan;
-                    if (uniqueBahan.isEmpty()) {
-                        displayBahan = "-";
-                    } else if (uniqueBahan.size() == 1) {
-                        displayBahan = uniqueBahan.iterator().next();
-                    } else {
-                        displayBahan = uniqueBahan.size() + " Bahan";
-                    }
+                    String displayBahan = uniqueBahan.isEmpty() ? "-" : (uniqueBahan.size() == 1 ? uniqueBahan.iterator().next() : uniqueBahan.size() + " Bahan");
                     dataTabel.add(new String[]{
                         String.valueOf(s.getIdSupplier()),
                         s.getNama(),
                         s.getNoTelp(),
                         displayBahan,
-                        ""
+                        String.valueOf(s.getIdSupplier())
                     });
                 }
                 return dataTabel;
             }
         });
 
-        tableSupplier.setTableActionListener(this::handleAction);
+        tableSupplier.setTableActionListener((id, name) -> handleViewHistory(id, name));
+        tableSupplier.setTableEditDeleteListener(new ActivityTable.TableEditDeleteListener() {
+            @Override
+            public void onEdit(String id, String name) {
+                // handleEdit(id, name);
+            }
+
+            @Override
+            public void onDelete(String id, String name) {
+                handleDelete(id, name);
+            }
+        });
+
         return tableSupplier;
+    }
+
+    private void handleEdit(String id, String name) {
+        JOptionPane.showMessageDialog(this, "Edit Supplier: " + name + " (ID: " + id + ")");
+    }
+
+    private void handleDelete(String id, String name) {
+        int idSupplier = Integer.parseInt(id);
+        if (supplierDAO.isSupplierInUse(idSupplier)) {
+            JOptionPane.showMessageDialog(this, "Tidak dapat menghapus '" + name + "'.\nSupplier ini masih terdaftar sebagai pemasok bahan baku aktif.", "Gagal Hapus", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        int confirm = JOptionPane.showConfirmDialog(this, "Yakin hapus supplier ini?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
+        if (confirm == JOptionPane.YES_OPTION) {
+            if (supplierDAO.deleteSupplier(idSupplier)) {
+                refreshData();
+                JOptionPane.showMessageDialog(this, "Berhasil dihapus.");
+            }
+        }
+    }
+
+    private void handleViewHistory(String id, String name) {
+        JOptionPane.showMessageDialog(this, "Menampilkan riwayat untuk: " + name);
     }
 
     // --- ACTIONS ---
@@ -210,7 +233,11 @@ public class SupplierPanel extends JPanel {
                     Map<String, String> data = get();
                     lblTotalSupplier.setText(data.getOrDefault("total_supplier", "0"));
                     lblBahanDisuplai.setText(data.getOrDefault("bahan_disuplai", "0"));
-                    lblTotalNilai.setText(data.getOrDefault("total_nilai", "Rp 0"));
+                    String totalNilai = data.getOrDefault("total_nilai", "Rp 0");
+                    if (totalNilai.contains("Jt")) {
+                        totalNilai = "<html>" + totalNilai.replace("Jt", "<small>Jt</small>") + "</html>";
+                    }
+                    lblTotalNilai.setText(totalNilai);
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
