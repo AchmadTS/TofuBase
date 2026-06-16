@@ -18,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import models.Produksi;
+import models.RecordProduksi;
 
 public class Dashboard extends JPanel {
 
@@ -178,7 +180,6 @@ public class Dashboard extends JPanel {
         topCardsPanel.setBackground(Theme.BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
 
-        // Inisialisasi variabel global
         lblProdHariIni = createAnimatedLabel();
         lblStokKedelai = createAnimatedLabel();
         lblPendapatan = createAnimatedLabel();
@@ -188,8 +189,6 @@ public class Dashboard extends JPanel {
         topCardsPanel.add(createStatCard("STOK KEDELAI", lblStokKedelai, "kg", "Sesuai gudang", Theme.WARNING));
         topCardsPanel.add(createStatCard("PENDAPATAN", lblPendapatan, "jt", "Bulan ini", Theme.GREEN));
         topCardsPanel.add(createStatCard("TAHU SIAP JUAL", lblTahuSiapJual, "potong", "Total semua jenis", Theme.TEXT_SECONDARY));
-
-        // Hapus pemanggilan Thread di sini karena sudah ditangani oleh startAutoRefresh()
         return topCardsPanel;
     }
 
@@ -320,7 +319,7 @@ public class Dashboard extends JPanel {
 
     private ActivityTable buildActivityTable() {
         String[] dashboardHeaders = {"Tanggal", "Batch", "Kedelai Digunakan", "Hasil Tahu", "Operator", "Status"};
-        ActivityTable table = new ActivityTable("Aktivitas Produksi Terbaru", dashboardHeaders, 5, new ActivityTable.DataProvider() {
+        return new ActivityTable("Aktivitas Produksi Terbaru", dashboardHeaders, 5, new ActivityTable.DataProvider() {
             @Override
             public int getTotalRowCount(String keyword) {
                 return dashboardDAO.getTableTotalRows(keyword);
@@ -328,11 +327,29 @@ public class Dashboard extends JPanel {
 
             @Override
             public List<String[]> getPageData(int limit, int offset, String keyword) {
-                return dashboardDAO.getTablePageData(limit, offset, keyword);
+                List<Produksi> listProduksi = dashboardDAO.getListProduksiLengkap(limit, offset, keyword);
+                List<String[]> dataTabel = new ArrayList<>();
+
+                for (Produksi p : listProduksi) {
+                    double totalKedelai = 0;
+                    String satuan = "-";
+                    for (RecordProduksi rp : p.getRecords()) {
+                        totalKedelai += rp.getJumlah();
+                        satuan = rp.getSatuan();
+                    }
+
+                    dataTabel.add(new String[]{
+                        p.getTanggal().toString(),
+                        "Batch-" + p.getIdProduksi(),
+                        FormatUtil.formatAngka(totalKedelai) + " " + satuan,
+                        FormatUtil.formatAngka(p.getHasilTahu()) + " potong",
+                        p.getNamaOperator(),
+                        p.getStatus()
+                    });
+                }
+                return dataTabel;
             }
         });
-        table.setPreferredSize(new Dimension(0, 390));
-        return table;
     }
 
     private JLabel createAnimatedLabel() {

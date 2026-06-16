@@ -212,7 +212,7 @@ public class BahanBaku extends JPanel {
 
     private void handleViewHistory(String id, String name) {
         Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(this);
-        ModalRiwayat modal = new ModalRiwayat(parentFrame, id, name);
+        ModalRiwayatBahanBaku modal = new ModalRiwayatBahanBaku(parentFrame, id, name);
         modal.setVisible(true);
         refreshData();
     }

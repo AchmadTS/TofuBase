@@ -267,20 +267,20 @@ public class ModalEditBahan extends JDialog {
         if (isInitializing || alertSatuanShown) {
             return;
         }
-
-        String currentSatuan = isSatuanBaruMode ? txtSatuanBaru.getText().trim()
-                : (cbSatuan.getSelectedItem() != null ? cbSatuan.getSelectedItem().toString() : "");
-        if (!currentSatuan.equals(originalSatuan) && !currentSatuan.equals("Pilih satuan...")
-                && !currentSatuan.equals("Ketik satuan baru...")) {
-            int choice = JOptionPane.showConfirmDialog(this,
-                    "Mengubah satuan akan membuat data baru di Data Master. Lanjutkan?", "Konfirmasi Perubahan Satuan",
-                    JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
+        String currentSatuan = isSatuanBaruMode ? txtSatuanBaru.getText().trim() : (cbSatuan.getSelectedItem() != null ? cbSatuan.getSelectedItem().toString() : "");
+        if (!currentSatuan.equals(originalSatuan) && !currentSatuan.equals("Pilih satuan...") && !currentSatuan.equals("Ketik satuan baru...")) {
+            int choice = JOptionPane.showConfirmDialog(this, "Mengubah satuan akan membuat data baru di Data Master. Lanjutkan?", "Konfirmasi Perubahan Satuan", JOptionPane.OK_CANCEL_OPTION, JOptionPane.WARNING_MESSAGE);
             if (choice == JOptionPane.OK_OPTION) {
                 alertSatuanShown = true;
             } else {
-                isInitializing = true;
-                cbSatuan.setSelectedItem(originalSatuan);
-                isInitializing = false;
+                SwingUtilities.invokeLater(() -> {
+                    isInitializing = true;
+                    if (isSatuanBaruMode) {
+                        toggleSatuanMode();
+                    }
+                    cbSatuan.setSelectedItem(originalSatuan);
+                    isInitializing = false;
+                });
             }
         }
     }
@@ -657,15 +657,10 @@ public class ModalEditBahan extends JDialog {
         txt.addFocusListener(new java.awt.event.FocusAdapter() {
             public void focusGained(java.awt.event.FocusEvent evt) {
                 if (txt.getText().equals(placeholder) || txt.getText().contains("Memuat")) {
-                    txt.setText("");
-                    txt.setForeground(Theme.TEXT_PRIMARY);
-                }
-            }
-
-            public void focusLost(java.awt.event.FocusEvent evt) {
-                if (txt.getText().trim().isEmpty()) {
-                    txt.setText(placeholder);
-                    txt.setForeground(Theme.TEXT_SECONDARY);
+                    SwingUtilities.invokeLater(() -> {
+                        txt.setText("");
+                        txt.setForeground(Theme.TEXT_PRIMARY);
+                    });
                 }
             }
         });
@@ -838,7 +833,7 @@ public class ModalEditBahan extends JDialog {
                         g2.setColor(comboBox.isEnabled() ? Theme.TEXT_SECONDARY : new Color(138, 146, 166, 100));
                         g2.setStroke(new BasicStroke(2.0f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
                         int w = getWidth(), h = getHeight();
-                        int[] x = { w / 2 - 4, w / 2, w / 2 + 4 }, y = { h / 2 - 2, h / 2 + 3, h / 2 - 2 };
+                        int[] x = {w / 2 - 4, w / 2, w / 2 + 4}, y = {h / 2 - 2, h / 2 + 3, h / 2 - 2};
                         g2.drawPolyline(x, y, 3);
                         g2.dispose();
                     }

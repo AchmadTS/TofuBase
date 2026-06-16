@@ -160,7 +160,7 @@ public class SupplierPanel extends JPanel {
         tableSupplier.setTableEditDeleteListener(new ActivityTable.TableEditDeleteListener() {
             @Override
             public void onEdit(String id, String name) {
-                // handleEdit(id, name);
+                handleEdit(id, name);
             }
 
             @Override
@@ -173,7 +173,12 @@ public class SupplierPanel extends JPanel {
     }
 
     private void handleEdit(String id, String name) {
-        JOptionPane.showMessageDialog(this, "Edit Supplier: " + name + " (ID: " + id + ")");
+        ModalEditSupplier modal = new ModalEditSupplier((Frame) SwingUtilities.getWindowAncestor(this), id);
+        modal.setVisible(true);
+        if (modal.isSaved()) {
+            refreshData();
+            JOptionPane.showMessageDialog(this, "Data supplier berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+        }
     }
 
     private void handleDelete(String id, String name) {
@@ -193,7 +198,8 @@ public class SupplierPanel extends JPanel {
     }
 
     private void handleViewHistory(String id, String name) {
-        JOptionPane.showMessageDialog(this, "Menampilkan riwayat untuk: " + name);
+        ModalRiwayatSupplier modal = new ModalRiwayatSupplier((Frame) SwingUtilities.getWindowAncestor(this), id, name);
+        modal.setVisible(true);
     }
 
     // --- ACTIONS ---

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class ModalRiwayat extends JDialog {
+public class ModalRiwayatBahanBaku extends JDialog {
 
     private static final int MODAL_WIDTH = 950;
     private static final int MODAL_HEIGHT = 750;
@@ -38,14 +38,12 @@ public class ModalRiwayat extends JDialog {
     private JLabel lblStokTerpakai;
     private ActivityTable tableRiwayat;
 
-    public ModalRiwayat(Frame parent, String idBahan, String namaBahan) {
+    public ModalRiwayatBahanBaku(Frame parent, String idBahan, String namaBahan) {
         super(parent, TITLE_DIALOG, true);
         this.targetNamaBahan = namaBahan;
-
         setupDialogProperties(parent);
         buildMainLayout();
         setupEscapeKey();
-
         loadTopCardsData();
     }
 
@@ -115,12 +113,11 @@ public class ModalRiwayat extends JDialog {
 
         lblTotalTransaksi = createCardValueLabel(Theme.TEXT_PRIMARY);
         lblNilaiPembelian = createCardValueLabel(Theme.GREEN);
-        lblStokTerpakai = createCardValueLabel(Theme.WARNING);
+        lblStokTerpakai = createCardValueLabel(Theme.BLUE_ACCENT);
 
         topCardsPanel.add(createCard(CARD_TITLE_1, lblTotalTransaksi, CARD_DESC_1));
         topCardsPanel.add(createCard(CARD_TITLE_2, lblNilaiPembelian, CARD_DESC_2));
         topCardsPanel.add(createCard(CARD_TITLE_3, lblStokTerpakai, CARD_DESC_3));
-
         return topCardsPanel;
     }
 
@@ -186,10 +183,9 @@ public class ModalRiwayat extends JDialog {
     }
 
     private void handleEdit(String id) {
-        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(ModalRiwayat.this);
+        Frame parentFrame = (Frame) SwingUtilities.getWindowAncestor(ModalRiwayatBahanBaku.this);
         ModalEditBahan modalEdit = new ModalEditBahan(parentFrame, id);
         modalEdit.setVisible(true);
-
         if (modalEdit.isSaved()) {
             JOptionPane.showMessageDialog(this, "Data berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
             refreshData();
@@ -197,11 +193,7 @@ public class ModalRiwayat extends JDialog {
     }
 
     private void handleDelete(String id) {
-        int confirm = JOptionPane.showConfirmDialog(this,
-                "Apakah Anda yakin ingin menghapus data transaksi ini secara permanen?",
-                "Konfirmasi Hapus",
-                JOptionPane.YES_NO_OPTION,
-                JOptionPane.WARNING_MESSAGE);
+        int confirm = JOptionPane.showConfirmDialog(this, "Apakah Anda yakin ingin menghapus data transaksi ini secara permanen?", "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
             if (bahanDAO.deleteRiwayatById(id)) {
                 JOptionPane.showMessageDialog(this, "Data transaksi berhasil dihapus dari database.", "Sukses", JOptionPane.INFORMATION_MESSAGE);

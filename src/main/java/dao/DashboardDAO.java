@@ -3,12 +3,15 @@ package dao;
 import utils.DatabaseConfig;
 import utils.FormatUtil;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import models.Produksi;
+import models.RecordProduksi;
 
 public class DashboardDAO {
 
@@ -135,5 +138,44 @@ public class DashboardDAO {
             e.printStackTrace();
         }
         return data;
+    }
+
+    public List<Produksi> getListProduksiLengkap(int limit, int offset, String keyword) {
+        List<Produksi> listProduksi = new ArrayList<>();
+        String search = "%" + keyword + "%";
+        String query = "SELECT p.id_produksi, p.tanggal, p.keterangan, p.hasil_tahu, p.status, u.nama as nama_operator " + "FROM produksi p JOIN users u ON p.id_user = u.id_user " + "WHERE p.batch LIKE ? OR p.status LIKE ? OR u.nama LIKE ? " + "ORDER BY p.tanggal DESC LIMIT ? OFFSET ?";
+        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, search);
+            ps.setString(2, search);
+            ps.setString(3, search);
+            ps.setInt(4, limit);
+            ps.setInt(5, offset);
+            List<Integer> ids = new ArrayList<>();
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Produksi p = new Produksi(rs.getInt("id_produksi"), rs.getDate("tanggal"), rs.getString("keterangan"), rs.getDouble("hasil_tahu"), rs.getString("nama_operator"), rs.getString("status"));
+                    listProduksi.add(p);
+                    ids.add(p.getIdProduksi());
+                }
+            }
+            if (!ids.isEmpty()) {
+                String idList = ids.toString().replace("[", "").replace("]", "");
+                String queryRecord = "SELECT rp.id_produksi, rp.id_record_produksi, rp.jumlah, bb.satuan FROM record_produksi rp " + "JOIN bahan_baku bb ON rp.id_bahan = bb.id_bahan WHERE rp.id_produksi IN (" + idList + ")";
+                try (Statement st = conn.createStatement(); ResultSet rsRec = st.executeQuery(queryRecord)) {
+                    while (rsRec.next()) {
+                        int idProd = rsRec.getInt("id_produksi");
+                        for (Produksi p : listProduksi) {
+                            if (p.getIdProduksi() == idProd) {
+                                p.addRecord(new RecordProduksi(rsRec.getInt("id_record_produksi"), rsRec.getDouble("jumlah"), rsRec.getString("satuan")));
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return listProduksi;
     }
 }
