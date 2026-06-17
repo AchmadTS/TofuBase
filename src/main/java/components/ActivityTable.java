@@ -5,6 +5,8 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
+import java.awt.event.ComponentAdapter;
+import java.awt.event.ComponentEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.List;
@@ -55,6 +57,8 @@ public class ActivityTable extends RoundedPanel {
     private JTextField txtSearch;
     private JComboBox<String> cbEntries;
     private Timer searchTimer;
+    private JPanel headerRowPanel;
+    private JScrollPane tableScroll;
 
     public ActivityTable(String title, String[] headers, int statusColIndex, DataProvider dataProvider) {
         super(20, Theme.CARD);
@@ -95,8 +99,7 @@ public class ActivityTable extends RoundedPanel {
         JPanel controlRow = new JPanel(new BorderLayout());
         controlRow.setOpaque(false);
         controlRow.setBorder(new EmptyBorder(15, 0, 15, 0));
-
-        // Entries
+        
         JPanel leftControl = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 0));
         leftControl.setOpaque(false);
         JLabel lblShow = new JLabel("Tampilkan ");
@@ -120,7 +123,6 @@ public class ActivityTable extends RoundedPanel {
             }
         });
 
-        // Search
         JPanel rightControl = new JPanel(new FlowLayout(FlowLayout.RIGHT, 5, 0));
         rightControl.setOpaque(false);
         JLabel lblSearch = new JLabel("Cari: ");
@@ -173,7 +175,8 @@ public class ActivityTable extends RoundedPanel {
         tableContentPanel.setOpaque(false);
 
         int cols = headers.length;
-        JPanel headerRowPanel = new JPanel(new GridLayout(1, cols, 0, 0));
+
+        headerRowPanel = new JPanel(new GridLayout(1, cols, 0, 0));
         headerRowPanel.setOpaque(true);
         headerRowPanel.setBackground(Theme.CARD);
         headerRowPanel.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
@@ -190,18 +193,26 @@ public class ActivityTable extends RoundedPanel {
             headerRowPanel.add(l);
         }
 
-        JScrollPane tableScroll = new JScrollPane(tableContentPanel);
+        tableScroll = new JScrollPane(tableContentPanel);
         tableScroll.setOpaque(false);
         tableScroll.getViewport().setOpaque(false);
         tableScroll.setBorder(null);
         tableScroll.setColumnHeaderView(headerRowPanel);
         tableScroll.getColumnHeader().setOpaque(false);
-        tableScroll.getVerticalScrollBar().setUnitIncrement(SCROLL_SPEED);
         tableScroll.getVerticalScrollBar().setUI(new ModernScrollBarUI());
-        tableScroll.getHorizontalScrollBar().setUnitIncrement(SCROLL_SPEED);
         tableScroll.getHorizontalScrollBar().setUI(new ModernScrollBarUI());
+        tableScroll.getVerticalScrollBar().setUnitIncrement(SCROLL_SPEED);
+        tableScroll.getHorizontalScrollBar().setUnitIncrement(SCROLL_SPEED);
         tableScroll.setPreferredSize(new Dimension(0, 200));
         tableScroll.setMinimumSize(new Dimension(0, 200));
+
+        tableScroll.addComponentListener(new ComponentAdapter() {
+            @Override
+            public void componentResized(ComponentEvent e) {
+                syncTableWidths();
+            }
+        });
+
         return tableScroll;
     }
 
@@ -314,7 +325,6 @@ public class ActivityTable extends RoundedPanel {
 
         tableContentPanel.add(Box.createVerticalGlue());
 
-        // Update Info Pagination
         int startItem = (totalData == 0) ? 0 : result.offset + 1;
         int endItem = Math.min(result.offset + entriesPerPage, totalData);
         java.text.NumberFormat nf = java.text.NumberFormat.getInstance(Locale.forLanguageTag("id-ID"));
@@ -323,6 +333,39 @@ public class ActivityTable extends RoundedPanel {
         btnPrev.setEnabled(currentPage > 1);
         btnNext.setEnabled(currentPage < result.totalPages);
         refreshUI();
+        syncTableWidths();
+    }
+
+    private void syncTableWidths() {
+        SwingUtilities.invokeLater(() -> {
+            if (tableScroll != null && headerRowPanel != null) {
+                for (Component c : tableContentPanel.getComponents()) {
+                    if (c instanceof JPanel) {
+                        c.setPreferredSize(null);
+                        c.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_MAX_HEIGHT));
+                    }
+                }
+                headerRowPanel.setPreferredSize(null);
+
+                int maxContentWidth = tableContentPanel.getPreferredSize().width;
+                int viewportWidth = tableScroll.getViewport().getWidth();
+                int finalWidth = Math.max(maxContentWidth, viewportWidth);
+                int headerHeight = Math.max(headerRowPanel.getPreferredSize().height, 35);
+                headerRowPanel.setPreferredSize(new Dimension(finalWidth, headerHeight));
+                headerRowPanel.revalidate();
+
+                for (Component c : tableContentPanel.getComponents()) {
+                    if (c instanceof JPanel) {
+                        c.setMaximumSize(new Dimension(finalWidth, ROW_MAX_HEIGHT));
+                        c.setPreferredSize(new Dimension(finalWidth, ROW_MAX_HEIGHT));
+                        c.revalidate();
+                    }
+                }
+
+                tableContentPanel.repaint();
+                headerRowPanel.repaint();
+            }
+        });
     }
 
     private JPanel createDynamicTableRow(String[] rowData, boolean isLastRow) {
