@@ -34,7 +34,7 @@ public class BahanBakuDAO {
             }
 
             // Stok Kedelai & Status
-            String queryKed = "SELECT SUM(stok) AS total_stok, CAST(SUBSTRING_INDEX(GROUP_CONCAT(min_stok ORDER BY updated_at DESC), ',', 1) AS DECIMAL) AS batas_stok FROM bahan_baku WHERE nama LIKE ?";
+            String queryKed = "SELECT SUM(stok) AS total_stok, MAX(min_stok) AS batas_stok FROM bahan_baku WHERE nama LIKE ?";
             try (PreparedStatement ps = conn.prepareStatement(queryKed)) {
                 ps.setString(1, "%Kedelai%");
                 try (ResultSet rs = ps.executeQuery()) {
@@ -101,7 +101,7 @@ public class BahanBakuDAO {
         String query = "SELECT MIN(b.id_bahan) AS id_bahan, b.nama, b.satuan, "
                 + "SUM(b.stok) AS total_stok, "
                 + "SUM(b.stok * b.harga_beli) / NULLIF(SUM(b.stok), 0) AS rata_harga, "
-                + "CAST(SUBSTRING_INDEX(GROUP_CONCAT(b.min_stok ORDER BY b.updated_at DESC), ',', 1) AS DECIMAL) AS batas_stok "
+                + "MAX(b.min_stok) AS batas_stok "
                 + "FROM (SELECT nama, satuan FROM bahan_baku " + whereClause
                 + "GROUP BY nama, satuan ORDER BY nama ASC LIMIT ? OFFSET ?) AS filter_b "
                 + "JOIN bahan_baku b ON b.nama = filter_b.nama AND b.satuan = filter_b.satuan "
