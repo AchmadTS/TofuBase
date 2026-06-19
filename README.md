@@ -4,33 +4,102 @@
 ![Maven](https://img.shields.io/badge/Maven-Build-red)
 ![MySQL](https://img.shields.io/badge/MySQL-Database-blue)
 ![Swing](https://img.shields.io/badge/Java-Swing-green)
-![Status](https://img.shields.io/badge/Status-Active%20Development-success)
+![Status](https://img.shields.io/badge/Status-Beta-success)
 
-**TofuBase** adalah aplikasi desktop berbasis **Java Swing** dan **MySQL** untuk membantu pengelolaan operasional pabrik tahu. Project ini menyediakan sistem login, dashboard ringkasan, manajemen bahan baku, riwayat transaksi bahan baku, serta struktur database yang sudah disiapkan untuk modul produksi, penjualan, keuangan, inventaris, supplier, pelanggan, dan manajemen user.
+**TofuBase** adalah aplikasi desktop berbasis **Java Swing** dan **MySQL** yang dirancang untuk membantu pengelolaan operasional pabrik tahu secara terintegrasi. Aplikasi ini menyediakan sistem autentikasi berbasis role, dashboard monitoring, manajemen bahan baku, supplier, produk, pelanggan, penjualan, produksi, inventaris, keuangan, serta manajemen pengguna. Dengan dukungan visualisasi data, pencatatan aktivitas, dan struktur database yang terorganisir, TofuBase membantu meningkatkan efisiensi pengelolaan data dan proses bisnis operasional pabrik tahu.
 
 ## Fitur Utama
 
-- **Login berbasis role** untuk `Admin`, `Owner`, dan `Staff`
-- **Dashboard** dengan:
-  - kartu ringkasan data
-  - grafik produksi berdasarkan rentang waktu
-  - status stok bahan baku
-  - tabel aktivitas/riwayat data
-  - auto-refresh data
-- **Manajemen Bahan Baku**:
-  - daftar stok bahan baku
-  - pencarian
-  - pagination
-  - tambah data
-  - edit data bahan baku
-  - lihat riwayat bahan baku
-- **UI modern** dengan komponen kustom:
-  - sidebar
-  - rounded panel
-  - custom scrollbar
-  - tabel aktivitas
-- **Database seeder** untuk mengisi data awal dan mengosongkan tabel sebelum seed ulang
-- **Struktur database lengkap** untuk kebutuhan operasional pabrik tahu
+### Autentikasi Berbasis Role
+
+- Login untuk role `Admin`, `Owner`, dan `Staff`
+- Hak akses disesuaikan berdasarkan peran pengguna
+
+### Dashboard Monitoring
+
+- Kartu ringkasan data operasional
+- Grafik produksi berdasarkan rentang waktu
+- Status stok bahan baku
+- Riwayat aktivitas terbaru
+- Auto-refresh data
+
+### Manajemen Bahan Baku
+
+- Daftar stok bahan baku
+- Pencarian data
+- Pagination
+- Tambah data
+- Edit data
+- Riwayat perubahan bahan baku
+
+### Manajemen Supplier
+
+- Daftar supplier
+- Pencarian data supplier
+- Tambah supplier
+- Edit supplier
+- Riwayat perubahan supplier
+
+### Manajemen Produk
+
+- Daftar produk
+- Tambah produk
+- Edit produk
+- Riwayat produk
+
+### Manajemen Pelanggan
+
+- Daftar pelanggan
+- Tambah pelanggan
+- Edit pelanggan
+
+### Manajemen Penjualan
+
+- Pencatatan transaksi penjualan
+- Monitoring data penjualan
+- Riwayat penjualan
+
+### Manajemen Produksi
+
+- Data produksi
+- Monitoring produksi
+- Riwayat produksi
+
+### Manajemen Inventaris
+
+- Monitoring inventaris
+- Status stok inventaris
+
+### Manajemen Keuangan
+
+- Data pemasukan
+- Data pengeluaran
+- Laporan keuangan
+
+### Manajemen User
+
+- Kelola data pengguna
+- Pengaturan role pengguna
+
+### Activity Logging
+
+- Pencatatan aktivitas pengguna secara otomatis
+- Riwayat aktivitas pada dashboard
+- Tabel aktivitas dengan aksi edit dan hapus
+
+### Antarmuka Modern
+
+- Sidebar navigasi
+- Rounded panel
+- Custom scrollbar
+- Tabel interaktif
+- Konsistensi tema dan komponen UI
+
+### Database Seeder
+
+- Mengosongkan tabel utama sebelum proses seed ulang
+- Mengisi data awal aplikasi secara otomatis
+- Mempermudah proses setup dan pengujian
 
 ## Teknologi yang Digunakan
 
@@ -208,12 +277,21 @@ MySQL Database
 ### Versi Saat Ini (v1)
 
 - [x] Login multi-role
-- [x] Dashboard ringkasan
+- [x] Dashboard monitoring
 - [x] Grafik produksi
+- [x] Status stok bahan baku
+- [x] Activity logging
 - [x] Manajemen bahan baku
-- [x] Riwayat bahan baku
 - [x] Manajemen supplier
-- [x] Riwayat pembelian bahan baku
+- [x] Manajemen produk
+- [x] Manajemen pelanggan
+- [x] Manajemen penjualan
+- [x] Manajemen produksi
+- [x] Manajemen inventaris
+- [x] Manajemen pemasukan
+- [x] Manajemen pengeluaran
+- [x] Laporan keuangan
+- [x] Manajemen user
 - [x] Database seeder
 - [x] Custom UI Components
 
@@ -239,13 +317,25 @@ MySQL Database
 - [ ] Manajemen User Lengkap
 - [ ] Audit Log Aktivitas
 - [ ] Backup & Restore Database
-- [ ] Dark Mode
 
 ## Catatan Pengembangan
 
-- Halaman utama yang sudah aktif di `MainFrame` saat ini mencakup **Dashboard** dan **Bahan Baku**.
-- Modul lain seperti **Produksi**, **Stok & Distribusi**, **Laporan Keuangan**, dan **Kelola User** sudah tercermin pada struktur aplikasi/database dan dapat dilanjutkan pengembangannya.
-- Tombol **Export PDF** pada menu bahan baku masih menampilkan informasi bahwa fiturnya sedang dikembangkan.
+Halaman yang telah aktif pada aplikasi saat ini meliputi:
+
+- Dashboard
+- Bahan Baku
+- Produk
+- Pelanggan
+- Penjualan
+- Pemasukan
+- Pengeluaran
+- Inventaris
+- Produksi
+- Laporan Keuangan
+- Kelola User
+- Supplier
+
+Beberapa fitur lanjutan seperti Export PDF, Export Excel, dan Backup Database.
 
 ## Screenshot / Preview
 
@@ -280,6 +370,60 @@ MySQL Database
 
   <img width="1536" height="815" alt="image" src="https://github.com/user-attachments/assets/e3251068-5668-43ce-9cfc-8cc2f1384bb8" />
 
+### Halaman Produk
+<img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/eed2240c-09e5-433b-9424-5e27841ad307" />
+
+- Modal Tambah
+
+  <img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/328509d8-2ea8-4ea3-9350-c9c4f26fd4f3" />
+
+### Halaman Pelanggan
+<img width="1536" height="815" alt="Screenshot 2026-06-19 125524" src="https://github.com/user-attachments/assets/14ede6e3-b09f-4254-a025-5d69322c22e8" />
+
+- Modal Tambah
+
+  <img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/2c826aa7-8e0f-43b6-87b2-fb0ead83e040" />
+
+### Halaman Penjualan
+<img width="1536" height="812" alt="image" src="https://github.com/user-attachments/assets/2634dc75-24b9-4e16-ab12-f19f2986b128" />
+
+### Halaman Produksi
+<img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/42d65eb6-74a4-40bc-9f9a-c2dc557f6dde" />
+
+- Modal Tambah
+
+  <img width="1536" height="813" alt="image" src="https://github.com/user-attachments/assets/f59b5ba0-c7c2-4a71-ae60-7240e2cfc889" />
+
+### Halaman Inventaris
+<img width="1536" height="815" alt="image" src="https://github.com/user-attachments/assets/5393365f-4fb3-4f03-b7d0-ee88732a5708" />
+
+- Modal Tambah
+
+  <img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/c8527f7c-5248-4c31-83cb-09d015ae9d45" />
+
+### Halaman Laporan Keuangan
+<img width="1536" height="815" alt="image" src="https://github.com/user-attachments/assets/ae32c7c1-cc58-4728-b199-11cc71fc06ff" />
+
+- Modal Export PDF
+
+  <img width="1536" height="815" alt="image" src="https://github.com/user-attachments/assets/34ed3abc-5074-4d73-8d9c-0f3c77f5fc61" />
+
+### Halaman Pemasukan
+<img width="1536" height="815" alt="image" src="https://github.com/user-attachments/assets/c3d4cd04-5e0b-4c37-84a3-a5d0f7e55f20" />
+
+- Modal Tambah
+
+  <img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/45e51b34-4378-47c8-b653-fa932228e193" />
+
+### Halaman Pengeluaran
+<img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/e0df9959-81b8-4ae9-8832-6ab008b294b2" />
+
+- Modal Tambah
+
+  <img width="1536" height="816" alt="image" src="https://github.com/user-attachments/assets/014b4275-9695-4176-9f69-8609900a0f99" />
+
+### Halaman Kelola User
+<img width="1536" height="813" alt="image" src="https://github.com/user-attachments/assets/3339fc3c-4496-4b57-b1f5-19448c0654b7" />
 
 ## Lisensi
 
