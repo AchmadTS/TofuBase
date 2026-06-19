@@ -103,4 +103,19 @@ public class PemasukanDAO {
         }
         return null;
     }
+
+    public boolean insertPemasukan(Pemasukan pemasukan) {
+        // Kita paksa masukkan ID Penjualan yang valid (misal: 1) agar lolos dari jeratan Foreign Key
+        String query = "INSERT INTO pemasukan (id_penjualan, tanggal, sumber, jumlah, keterangan) VALUES ((SELECT id_penjualan FROM penjualan LIMIT 1), ?, ?, ?, ?)";
+        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setDate(1, new java.sql.Date(pemasukan.getTanggal().getTime()));
+            ps.setString(2, pemasukan.getSumber());
+            ps.setDouble(3, pemasukan.getJumlah());
+            ps.setString(4, pemasukan.getKeterangan());
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

@@ -15,6 +15,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.io.File;
+import service.NotaPenjualanService;
 
 public class PenjualanPanel extends JPanel {
 
@@ -157,11 +159,41 @@ public class PenjualanPanel extends JPanel {
     }
 
     private void handleExportPDF() {
-        JOptionPane.showMessageDialog(this, "Fitur export PDF penjualan sedang dalam pengembangan.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        String selectedIdStr = tablePenjualan.getLastSelectedId();
+        
+        if (selectedIdStr == null || selectedIdStr.trim().isEmpty() || selectedIdStr.equals("-")) {
+            JOptionPane.showMessageDialog(this, "Silakan klik atau pilih salah satu baris transaksi penjualan dari tabel terlebih dahulu!", "Peringatan", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int idPenjualan = Integer.parseInt(selectedIdStr);
+
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Simpan Nota Penjualan");
+        fileChooser.setSelectedFile(new File("Nota_Penjualan_#" + idPenjualan + ".html"));
+
+        if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
+            String path = fileChooser.getSelectedFile().getAbsolutePath();
+            if (!path.toLowerCase().endsWith(".html")) {
+                path += ".html";
+            }
+
+            NotaPenjualanService notaService = new NotaPenjualanService();
+            boolean sukses = notaService.exportNota(idPenjualan, path);
+
+            if (sukses) {
+                JOptionPane.showMessageDialog(this, "Nota Penjualan #" + idPenjualan + " berhasil diekspor!\nLokasi: " + path, "Sukses", JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                JOptionPane.showMessageDialog(this, "Gagal mencetak nota penjualan.", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private void handleAddPenjualan() {
-        JOptionPane.showMessageDialog(this, "Fitur tambah penjualan akan segera tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        ModalTambahPenjualan modal = new ModalTambahPenjualan(topFrame, this);
+        modal.setVisible(true);
+        refreshData(); 
     }
 
     private void refreshData() {
@@ -239,7 +271,7 @@ public class PenjualanPanel extends JPanel {
         JLabel lblTitle = new JLabel(title, SwingConstants.CENTER);
         lblTitle.setForeground(Theme.TEXT_SECONDARY);
         lblTitle.setFont(new Font("SansSerif", Font.BOLD, 10));
-        lblTitle.setAlignmentX(Component.CENTER_ALIGNMENT);
+        card.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         JPanel valuePanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 5, 0));
         valuePanel.setOpaque(false);
@@ -254,7 +286,7 @@ public class PenjualanPanel extends JPanel {
         JLabel lblStatus = new JLabel(subtitle, SwingConstants.CENTER);
         lblStatus.setForeground(subtitleColor);
         lblStatus.setFont(new Font("SansSerif", Font.PLAIN, 12));
-        lblStatus.setAlignmentX(Component.CENTER_ALIGNMENT);
+        card.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         card.add(lblTitle);
         card.add(Box.createVerticalStrut(10));

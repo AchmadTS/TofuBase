@@ -148,7 +148,10 @@ public class PemasukanPanel extends JPanel {
     }
 
     private void handleAddPemasukan() {
-        JOptionPane.showMessageDialog(this, "Fitur tambah pemasukan akan segera tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        ModalTambahPemasukan modal = new ModalTambahPemasukan(topFrame, this);
+        modal.setVisible(true);
+        refreshData(); 
     }
 
     private void refreshData() {

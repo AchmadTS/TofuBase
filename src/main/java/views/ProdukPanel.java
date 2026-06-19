@@ -164,7 +164,10 @@ public class ProdukPanel extends JPanel {
     }
 
     private void handleAddProduk() {
-        JOptionPane.showMessageDialog(this, "Fitur tambah produk akan segera tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
+    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+    ModalTambahProduk modal = new ModalTambahProduk(topFrame, this);
+    modal.setVisible(true);
+    refreshData();
     }
 
     private void refreshData() {

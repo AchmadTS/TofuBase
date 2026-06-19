@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
 import java.util.Map;
+import service.LaporanPdfService;
 
 public class LaporanKeuanganPanel extends JPanel {
     private static final String TITLE = "Laporan Keuangan";
@@ -143,7 +144,40 @@ public class LaporanKeuanganPanel extends JPanel {
     }
 
     private void handleExportPDF() {
-        JOptionPane.showMessageDialog(this, "Fitur export PDF laporan keuangan sedang dalam pengembangan.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        // 1. Buat dialog pemilih berkas (JFileChooser)
+        javax.swing.JFileChooser fileChooser = new javax.swing.JFileChooser();
+        fileChooser.setDialogTitle("Simpan Laporan Keuangan");
+        
+        // Set nama default berkas saat dialog terbuka
+        fileChooser.setSelectedFile(new java.io.File("Laporan_Keuangan_TofuBase.html"));
+
+        // 2. Tampilkan dialog "Save" ke user
+        int userSelection = fileChooser.showSaveDialog(this);
+
+        if (userSelection == javax.swing.JFileChooser.APPROVE_OPTION) {
+            java.io.File fileToSave = fileChooser.getSelectedFile();
+            String outputPath = fileToSave.getAbsolutePath();
+
+            // Memastikan ekstensi berkas tetap .html demi kenyamanan buka di browser
+            if (!outputPath.toLowerCase().endsWith(".html")) {
+                outputPath += ".html";
+            }
+
+            // 3. Panggil LaporanPdfService untuk memproses cetak data
+            service.LaporanPdfService pdfService = new service.LaporanPdfService();
+            boolean sukses = pdfService.exportLaporanKeuangan(outputPath);
+
+            // 4. Berikan feedback responsif ke user
+            if (sukses) {
+                javax.swing.JOptionPane.showMessageDialog(this,
+                        "Laporan Keuangan berhasil diekspor!\nLokasi: " + outputPath + "\n\nSilakan buka berkas tersebut untuk melakukan cetak PDF via Browser.",
+                        "Ekspor Berhasil", javax.swing.JOptionPane.INFORMATION_MESSAGE);
+            } else {
+                javax.swing.JOptionPane.showMessageDialog(this,
+                        "Gagal mengekspor laporan keuangan. Pastikan aplikasi memiliki izin menulis berkas.",
+                        "Ekspor Gagal", javax.swing.JOptionPane.ERROR_MESSAGE);
+            }
+        }
     }
 
     private void handleAddLaporan() {

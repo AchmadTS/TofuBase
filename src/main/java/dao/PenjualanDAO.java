@@ -157,4 +157,65 @@ public class PenjualanDAO {
         }
         return list;
     }
+
+    public boolean insertPenjualan(Penjualan penjualan, List<RecordPenjualan> detailList) {
+        String queryPenjualan = "INSERT INTO penjualan (id_pelanggan, tanggal, total, keterangan) VALUES (?, ?, ?, ?)";
+        String queryRecord = "INSERT INTO record_penjualan (id_penjualan, id_produk, jumlah, harga, subtotal) VALUES (?, ?, ?, ?, ?)";
+        String queryUpdateStok = "UPDATE produk SET stok = stok - ? WHERE id_produk = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConfig.getKoneksi();
+            conn.setAutoCommit(false);
+            
+            int idPenjualan = 0;
+            try (PreparedStatement psP = conn.prepareStatement(queryPenjualan, java.sql.Statement.RETURN_GENERATED_KEYS)) {
+                psP.setInt(1, penjualan.getIdPelanggan());
+                psP.setDate(2, new java.sql.Date(penjualan.getTanggal().getTime()));
+                psP.setDouble(3, penjualan.getTotal());
+                psP.setString(4, penjualan.getKeterangan());
+                psP.executeUpdate();
+                try (ResultSet rs = psP.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        idPenjualan = rs.getInt(1);
+                    }
+                }
+            }
+            
+            if (idPenjualan == 0) {
+                conn.rollback();
+                return false;
+            }
+            
+            try (PreparedStatement psR = conn.prepareStatement(queryRecord);
+                 PreparedStatement psS = conn.prepareStatement(queryUpdateStok)) {
+                for (RecordPenjualan item : detailList) {
+                    psR.setInt(1, idPenjualan);
+                    psR.setInt(2, item.getIdProduk());
+                    psR.setDouble(3, item.getJumlah());
+                    psR.setDouble(4, item.getHarga());
+                    psR.setDouble(5, item.getSubtotal());
+                    psR.addBatch();
+                    
+                    psS.setDouble(1, item.getJumlah());
+                    psS.setInt(2, item.getIdProduk());
+                    psS.addBatch();
+                }
+                psR.executeBatch();
+                psS.executeBatch();
+            }
+            
+            conn.commit();
+            return true;
+        } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (Exception e) { e.printStackTrace(); }
+            }
+        }
+    }
 }

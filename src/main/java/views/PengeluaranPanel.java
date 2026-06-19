@@ -148,7 +148,10 @@ public class PengeluaranPanel extends JPanel {
     }
 
     private void handleAddPengeluaran() {
-        JOptionPane.showMessageDialog(this, "Fitur tambah pengeluaran akan segera tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        ModalTambahPengeluaran modal = new ModalTambahPengeluaran(topFrame, this);
+        modal.setVisible(true);
+        refreshData(); 
     }
 
     private void refreshData() {

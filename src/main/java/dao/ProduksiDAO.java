@@ -110,16 +110,64 @@ public class ProduksiDAO {
         return null;
     }
 
-    public List<Produk> getProdukList() {
-        List<Produk> list = new ArrayList<>();
-        String query = "SELECT id_produk, nama, satuan, harga_jual, jenis, stok FROM produk ORDER BY nama ASC";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+    public List<models.Produk> getProdukList() {
+        List<models.Produk> list = new ArrayList<>();
+        String query = "SELECT id_produk, nama, satuan, harga_jual, stok FROM produk ORDER BY nama ASC";
+        try (Connection conn = utils.DatabaseConfig.getKoneksi(); 
+             PreparedStatement ps = conn.prepareStatement(query); 
+             ResultSet rs = ps.executeQuery()) {
+            
             while (rs.next()) {
-                list.add(new Produk(rs.getInt("id_produk"), rs.getString("nama"), rs.getString("satuan"), rs.getDouble("harga_jual"), rs.getString("jenis"), rs.getDouble("stok")));
+                models.Produk p = new models.Produk();
+                p.setIdProduk(rs.getInt("id_produk"));
+                p.setNama(rs.getString("nama"));
+                p.setSatuan(rs.getString("satuan"));
+                p.setHargaJual(rs.getDouble("harga_jual"));
+                p.setStok(rs.getDouble("stok"));
+                list.add(p);
             }
         } catch (Exception e) {
             e.printStackTrace();
         }
         return list;
+    }
+
+    public boolean insertProduksi(int idProduk, String batch, java.util.Date tanggal, double hasilTahu, String status, String keterangan, int idUser) {
+        String queryProduksi = "INSERT INTO produksi (id_produk, batch, tanggal, hasil_tahu, status, keterangan, id_user) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        String queryUpdateStok = "UPDATE produk SET stok = stok + ? WHERE id_produk = ?";
+        Connection conn = null;
+        try {
+            conn = DatabaseConfig.getKoneksi();
+            conn.setAutoCommit(false);
+            try (PreparedStatement psP = conn.prepareStatement(queryProduksi)) {
+                psP.setInt(1, idProduk);
+                psP.setString(2, batch);
+                psP.setDate(3, new java.sql.Date(tanggal.getTime()));
+                psP.setDouble(4, hasilTahu);
+                psP.setString(5, status);
+                psP.setString(6, keterangan);
+                psP.setInt(7, idUser);
+                psP.executeUpdate();
+            }
+            if (status.equalsIgnoreCase("Selesai")) {
+                try (PreparedStatement psS = conn.prepareStatement(queryUpdateStok)) {
+                    psS.setDouble(1, hasilTahu);
+                    psS.setInt(2, idProduk);
+                    psS.executeUpdate();
+                }
+            }
+            conn.commit();
+            return true;
+        } catch (Exception e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
+            }
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (conn != null) {
+                try { conn.setAutoCommit(true); conn.close(); } catch (Exception e) { e.printStackTrace(); }
+            }
+        }
     }
 }

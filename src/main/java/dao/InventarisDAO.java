@@ -101,4 +101,17 @@ public class InventarisDAO {
         }
         return null;
     }
+
+    public boolean insertInventaris(String keterangan) {
+        String query = "INSERT INTO inventaris (tanggal_cek, keterangan) VALUES (CURDATE(), ?)";
+        try (Connection conn = DatabaseConfig.getKoneksi(); 
+            PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, keterangan);
+            int rows = ps.executeUpdate();
+            return rows > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

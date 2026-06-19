@@ -52,7 +52,8 @@ public class MainFrame extends JFrame {
         contentPanel.add(new PenjualanPanel(userName, userRole), "Penjualan");
         contentPanel.add(new PemasukanPanel(userName, userRole), "Pemasukan");
         contentPanel.add(new PengeluaranPanel(userName, userRole), "Pengeluaran");
-        contentPanel.add(new InventarisPanel(userName, userRole), "Stok & Distribusi");
+        // contentPanel.add(new StokDistribusiPanel(userName, userRole), "Stok & Distribusi");
+        contentPanel.add(new InventarisPanel(userName, userRole), "Inventaris");
         contentPanel.add(new ProduksiPanel(userName, userRole), "Produksi");
         contentPanel.add(new LaporanKeuanganPanel(userName, userRole), "Laporan Keuangan");
         contentPanel.add(new KelolaUserPanel(userName, userRole), "Kelola User");

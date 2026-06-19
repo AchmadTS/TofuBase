@@ -160,7 +160,12 @@ public class PelangganPanel extends JPanel {
     }
 
     private void handleAddPelanggan() {
-        JOptionPane.showMessageDialog(this, "Fitur tambah pelanggan akan segera tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        
+        ModalTambahPelanggan modal = new ModalTambahPelanggan(topFrame, this);
+        modal.setVisible(true);
+
+        refreshData(); 
     }
 
     private void refreshData() {

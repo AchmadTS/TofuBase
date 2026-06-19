@@ -73,8 +73,12 @@ public class Sidebar extends JPanel {
         }
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("≡", "Produksi", activeMenuName));
+        // add(Box.createVerticalStrut(10));
+        // add(createNavMenuItem("◇", "Stok & Distribusi", activeMenuName));
+        
+        // MENAMBAHKAN MENU INVENTARIS DI SINI
         add(Box.createVerticalStrut(10));
-        add(createNavMenuItem("◇", "Stok & Distribusi", activeMenuName));
+        add(createNavMenuItem("📋", "Inventaris", activeMenuName));
 
         // --- HAK AKSES ---
         if (isOwner || isAdmin) {

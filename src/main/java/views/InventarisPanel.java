@@ -147,10 +147,15 @@ public class InventarisPanel extends JPanel {
     }
 
     private void handleAddInventaris() {
-        JOptionPane.showMessageDialog(this, "Fitur tambah inventaris akan segera tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
-    }
+    // Mencari JFrame induk dari panel ini agar posisi modal pas di tengah screen
+    JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+    
+    // Membuka modal pop-up tambah data
+    ModalTambahInventaris modal = new ModalTambahInventaris(topFrame, this);
+    modal.setVisible(true);
+}
 
-    private void refreshData() {
+    public void refreshData() {
         fetchTopCardsData();
         if (tableInventaris != null) {
             tableInventaris.updateTableModel();

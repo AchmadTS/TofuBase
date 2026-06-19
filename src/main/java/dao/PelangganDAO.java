@@ -103,4 +103,20 @@ public class PelangganDAO {
         }
         return null;
     }
+
+    public boolean insertPelanggan(Pelanggan pelanggan) {
+        String query = "INSERT INTO pelanggan (nama, alamat, no_telp, email) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setString(1, pelanggan.getNama());
+            ps.setString(2, pelanggan.getAlamat());
+            ps.setString(3, pelanggan.getNoTelp());
+            ps.setString(4, pelanggan.getEmail());
+            
+            int rowsInserted = ps.executeUpdate();
+            return rowsInserted > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

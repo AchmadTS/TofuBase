@@ -105,4 +105,18 @@ public class PengeluaranDAO {
         }
         return null;
     }
+
+    public boolean insertPengeluaran(Pengeluaran pengeluaran) {
+        String query = "INSERT INTO pengeluaran (tanggal, kategori, deskripsi, jumlah) VALUES (?, ?, ?, ?)";
+        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+            ps.setDate(1, new java.sql.Date(pengeluaran.getTanggal().getTime()));
+            ps.setString(2, pengeluaran.getKategori());
+            ps.setString(3, pengeluaran.getDeskripsi());
+            ps.setDouble(4, pengeluaran.getJumlah());
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

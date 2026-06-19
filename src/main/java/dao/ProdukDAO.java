@@ -145,4 +145,30 @@ public class ProdukDAO {
         }
         return null;
     }
+
+    public boolean insertProduk(Produk produk) {
+        boolean hasJenis = isJenisColumnAvailable();
+        String query = hasJenis 
+                ? "INSERT INTO produk (nama, jenis, satuan, harga_jual, stok) VALUES (?, ?, ?, ?, ?)"
+                : "INSERT INTO produk (nama, satuan, harga_jual, stok) VALUES (?, ?, ?, ?)";
+                
+        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+            if (hasJenis) {
+                ps.setString(1, produk.getNama());
+                ps.setString(2, produk.getJenis());
+                ps.setString(3, produk.getSatuan());
+                ps.setDouble(4, produk.getHargaJual());
+                ps.setDouble(5, produk.getStok());
+            } else {
+                ps.setString(1, produk.getNama());
+                ps.setString(2, produk.getSatuan());
+                ps.setDouble(3, produk.getHargaJual());
+                ps.setDouble(4, produk.getStok());
+            }
+            return ps.executeUpdate() > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
 }

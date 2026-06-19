@@ -148,9 +148,11 @@ public class ProduksiPanel extends JPanel {
     }
 
     private void handleAddProduksi() {
-        JOptionPane.showMessageDialog(this, "Fitur tambah produksi akan segera tersedia.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JFrame topFrame = (JFrame) SwingUtilities.getWindowAncestor(this);
+        ModalTambahProduksi modal = new ModalTambahProduksi(topFrame, this);
+        modal.setVisible(true);
+        refreshData(); 
     }
-
     private void refreshData() {
         fetchTopCardsData();
         if (tableProduksi != null) {
