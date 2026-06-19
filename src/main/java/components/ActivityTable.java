@@ -59,6 +59,7 @@ public class ActivityTable extends RoundedPanel {
     private Timer searchTimer;
     private JPanel headerRowPanel;
     private JScrollPane tableScroll;
+    private String lastSelectedId = null;
 
     public ActivityTable(String title, String[] headers, int statusColIndex, DataProvider dataProvider) {
         super(20, Theme.CARD);
@@ -80,6 +81,10 @@ public class ActivityTable extends RoundedPanel {
 
     public void setTableEditDeleteListener(TableEditDeleteListener listener) {
         this.tableEditDeleteListener = listener;
+    }
+
+    public String getLastSelectedId() {
+        return this.lastSelectedId;
     }
 
     private void buildUI() {
@@ -378,6 +383,14 @@ public class ActivityTable extends RoundedPanel {
             row.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, Theme.BORDER));
         }
 
+        final String targetId = extractTargetId(rowData, cols);
+        row.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mousePressed(MouseEvent e) {
+                lastSelectedId = targetId;
+            }
+        });
+
         for (int i = 0; i < cols; i++) {
             boolean addRightBorder = (i < cols - 1);
             String cellData = (i < rowData.length && rowData[i] != null) ? rowData[i] : "-";
@@ -405,13 +418,22 @@ public class ActivityTable extends RoundedPanel {
 
         if (tableActionListener != null) {
             wrapper.add(createActionButton(ICON_VIEW, Theme.BLUE_ACCENT, "Lihat Riwayat",
-                    () -> tableActionListener.onViewHistory(targetId, targetName)));
+                    () -> {
+                        lastSelectedId = targetId;
+                        tableActionListener.onViewHistory(targetId, targetName);
+                    }));
         }
         if (tableEditDeleteListener != null) {
             wrapper.add(createActionButton(ICON_EDIT, Theme.WARNING, "Edit Data",
-                    () -> tableEditDeleteListener.onEdit(targetId, targetName)));
+                    () -> {
+                        lastSelectedId = targetId;
+                        tableEditDeleteListener.onEdit(targetId, targetName);
+                    }));
             wrapper.add(createActionButton(ICON_DELETE, Theme.RED, "Hapus Data",
-                    () -> tableEditDeleteListener.onDelete(targetId, targetName)));
+                    () -> {
+                        lastSelectedId = targetId;
+                        tableEditDeleteListener.onDelete(targetId, targetName);
+                    }));
         }
         return wrapper;
     }

@@ -63,10 +63,22 @@ public class Sidebar extends JPanel {
         
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("○", "Bahan Baku", activeMenuName));
+        if (isOwner || isAdmin) {
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("⋆", "Produk", activeMenuName));
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("★", "Pelanggan", activeMenuName));
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("💰", "Penjualan", activeMenuName));
+        }
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("≡", "Produksi", activeMenuName));
+        // add(Box.createVerticalStrut(10));
+        // add(createNavMenuItem("◇", "Stok & Distribusi", activeMenuName));
+        
+        // MENAMBAHKAN MENU INVENTARIS DI SINI
         add(Box.createVerticalStrut(10));
-        add(createNavMenuItem("◇", "Stok & Distribusi", activeMenuName));
+        add(createNavMenuItem("📋", "Inventaris", activeMenuName));
 
         // --- HAK AKSES ---
         if (isOwner || isAdmin) {
@@ -78,6 +90,10 @@ public class Sidebar extends JPanel {
             add(keuanganLabel);
             add(Box.createVerticalStrut(10));
             add(createNavMenuItem("↗", "Laporan Keuangan", activeMenuName));
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("↓", "Pemasukan", activeMenuName));
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("↑", "Pengeluaran", activeMenuName));
             add(Box.createVerticalStrut(10));
             add(createNavMenuItem("⚙", "Kelola User", activeMenuName));
         }

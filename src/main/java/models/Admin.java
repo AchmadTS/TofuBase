@@ -24,8 +24,12 @@ public class Admin extends User {
                 kelolaDataMaster(menuName);
             case "Produksi" ->
                 kelolaProduksi();
-            case "Laporan Keuangan" ->
+            case "Penjualan" ->
+                kelolaPenjualan();
+            case "Laporan Keuangan", "Pemasukan", "Pengeluaran" ->
                 kelolaKeuangan();
+            case "Produk", "Pelanggan" ->
+                kelolaDataMaster(menuName);
             case "Dashboard" ->
                 lihatLaporan();
             default ->
