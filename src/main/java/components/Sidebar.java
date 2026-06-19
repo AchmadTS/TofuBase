@@ -55,12 +55,12 @@ public class Sidebar extends JPanel {
         add(menuLabel);
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("⊞", "Dashboard", activeMenuName));
-        
+
         if (isOwner) {
             add(Box.createVerticalStrut(10));
             add(createNavMenuItem("🚚", "Supplier", activeMenuName));
         }
-        
+
         add(Box.createVerticalStrut(10));
         add(createNavMenuItem("○", "Bahan Baku", activeMenuName));
         if (isOwner || isAdmin) {
@@ -75,12 +75,14 @@ public class Sidebar extends JPanel {
         add(createNavMenuItem("≡", "Produksi", activeMenuName));
         // add(Box.createVerticalStrut(10));
         // add(createNavMenuItem("◇", "Stok & Distribusi", activeMenuName));
-        
-        // MENAMBAHKAN MENU INVENTARIS DI SINI
-        add(Box.createVerticalStrut(10));
-        add(createNavMenuItem("📋", "Inventaris", activeMenuName));
 
-        // --- HAK AKSES ---
+        // --- KHUSUS OWNER ---
+        if (isOwner) {
+            add(Box.createVerticalStrut(10));
+            add(createNavMenuItem("📋", "Inventaris", activeMenuName));
+        }
+
+        // --- HAK AKSES UNTUK ADMIN DAN OWNER ---
         if (isOwner || isAdmin) {
             add(Box.createVerticalStrut(30));
             JLabel keuanganLabel = new JLabel("KEUANGAN");
