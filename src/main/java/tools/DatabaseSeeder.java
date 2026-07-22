@@ -55,18 +55,17 @@ public class DatabaseSeeder {
             System.out.println("KONEKSI BERHASIL");
             System.out.println("=================================");
 
-            // Disable FK
-            stmt.execute("SET FOREIGN_KEY_CHECKS = 0");
+            stmt.execute("SET session_replication_role = 'replica';");
 
             System.out.println("\nMengosongkan tabel...");
 
             for (String table : TABLES) {
-                stmt.execute("TRUNCATE TABLE " + table);
+                stmt.execute("TRUNCATE TABLE " + table + " RESTART IDENTITY CASCADE;");
                 System.out.println("✓ " + table);
             }
 
             // Enable FK
-            stmt.execute("SET FOREIGN_KEY_CHECKS = 1");
+            stmt.execute("SET session_replication_role = 'origin';");
 
             System.out.println("\n=================================");
             System.out.println("MENJALANKAN SEEDER");

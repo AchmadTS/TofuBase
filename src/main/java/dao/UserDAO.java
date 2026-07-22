@@ -21,7 +21,8 @@ public class UserDAO {
                 + "LEFT JOIN admin a ON u.id_user = a.id_user "
                 + "LEFT JOIN owner o ON u.id_user = o.id_user "
                 + "LEFT JOIN staff s ON u.id_user = s.id_user "
-                + "WHERE u.email = ? AND u.password = ? AND u.status = 'Aktif'";
+                + "WHERE u.email = ? AND u.password = ? AND LOWER(u.status) = 'aktif'";
+
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, email);
             ps.setString(2, password);
@@ -39,7 +40,7 @@ public class UserDAO {
                         return new Admin(id, user, pass, nama, eml, telp, status,
                                 rs.getString("admin_jabatan"),
                                 rs.getString("admin_level"),
-                                rs.getDate("tanggal_dibuat"));
+                                rs.getTimestamp("tanggal_dibuat"));
                     } else if (rs.getInt("id_owner") != 0) {
                         return new Owner(id, user, pass, nama, eml, telp, status,
                                 rs.getString("owner_jabatan"),

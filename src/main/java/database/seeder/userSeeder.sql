@@ -1,4 +1,4 @@
-INSERT INTO `users` (`id_user`, `username`, `password`, `nama`, `email`, `no_telp`, `status`) VALUES
+INSERT INTO users (id_user, username, password, nama, email, no_telp, status) VALUES
 (1, 'nasrudinpandutama', 'b4b870af4d585a88aa3eeac45ec8a0c1', 'Nasrudin Pandutama', 'nasrudinpandutama@gmail.com', '082135254176', 'aktif'),
 (2, 'satriyagalankmulyadi', '9aa669e62f20dce3b53ad6e5a165acac', 'Satriya Galank Mulyadi', 'satriyagalankmulyadi@gmail.com', '082148224132', 'aktif'),
 (3, 'isyalamlamal-sabil', '04d43afb1c34c3e6a4640653262d5777', 'Isya Lam Lam Al-Sabil', 'isyalamlamalsabil@gmail.com', '082117081812', 'aktif'),
