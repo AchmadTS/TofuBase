@@ -26,8 +26,7 @@ VALUES
 INSERT INTO supplier
     (id_supplier, nama, alamat, no_telp, email)
 SELECT
-    n,
-
+    n AS id_supplier,
     CONCAT(
         CASE (n % 5)
             WHEN 0 THEN 'CV '
@@ -48,7 +47,6 @@ SELECT
         END,
         LPAD(n::text, 6, '0')
     ) AS nama,
-
     CONCAT(
         'Jl. ',
         CASE (n % 10)
@@ -64,7 +62,7 @@ SELECT
             ELSE 'Padalarang'
         END,
         ' No. ',
-        ((n * 13) % 300) + 1,
+        ((n * 13)::bigint % 300) + 1,
         ', ',
         CASE (n % 4)
             WHEN 0 THEN 'Bandung'
@@ -73,16 +71,13 @@ SELECT
             ELSE 'Sumedang'
         END
     ) AS alamat,
-
     CONCAT(
         '08',
-        LPAD(((n * 97) % 1000000000)::text, 9, '0')
+        LPAD((((n::bigint * 97) % 1000000000))::text, 9, '0')
     ) AS no_telp,
-
     CONCAT(
         'supplier',
         LPAD(n::text, 6, '0'),
         '@gmail.com'
     ) AS email
-
-FROM generate_series(4, 100000) AS n;
+FROM generate_series(4, 10000) AS n;

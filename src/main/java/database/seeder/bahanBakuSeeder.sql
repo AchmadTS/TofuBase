@@ -9,11 +9,11 @@ VALUES
 
 WITH bahan_gen AS (
     SELECT
-        s.id_supplier,
-        v.variant,
-        5 + ((s.id_supplier - 1) * 2) + v.variant AS id_bahan
-    FROM generate_series(1, 100000) AS s(id_supplier)
-    CROSS JOIN (VALUES (1), (2)) AS v(variant)
+        rn,
+        ((rn - 1) % 10000) + 1 AS id_supplier,
+        (((rn - 1) / 10000) % 2) + 1 AS variant,
+        rn + 5 AS id_bahan
+    FROM generate_series(1, 99995) AS rn
 )
 INSERT INTO bahan_baku
     (id_bahan, id_supplier, nama, satuan, stok, harga_beli, min_stok)
@@ -21,11 +21,11 @@ SELECT
     id_bahan,
     id_supplier,
     CASE (id_supplier % 5)
-        WHEN 0 THEN CASE variant WHEN 1 THEN 'Kedelai'      ELSE 'Kacang kedelai' END
-        WHEN 1 THEN CASE variant WHEN 1 THEN 'Garam'        ELSE 'Garam kasar' END
-        WHEN 2 THEN CASE variant WHEN 1 THEN 'Kayu bakar'   ELSE 'Arang' END
-        WHEN 3 THEN CASE variant WHEN 1 THEN 'Kunyit'       ELSE 'Jahe' END
-        ELSE       CASE variant WHEN 1 THEN 'Plastik'       ELSE 'Kardus' END
+        WHEN 0 THEN CASE variant WHEN 1 THEN 'Kedelai' ELSE 'Kedelai Premium' END
+        WHEN 1 THEN CASE variant WHEN 1 THEN 'Garam' ELSE 'Garam Halus' END
+        WHEN 2 THEN CASE variant WHEN 1 THEN 'Kayu bakar' ELSE 'Kayu bakar Kering' END
+        WHEN 3 THEN CASE variant WHEN 1 THEN 'Kunyit' ELSE 'Kunyit Bubuk' END
+        ELSE       CASE variant WHEN 1 THEN 'Plastik' ELSE 'Plastik Kemasan' END
     END AS nama,
     CASE (id_supplier % 5)
         WHEN 0 THEN 'kg'
