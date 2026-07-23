@@ -37,13 +37,25 @@ public class SupplierDAO {
 
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT COUNT(*) FROM supplier"
-                + (hasKeyword ? " WHERE nama ILIKE ? OR CAST(id_supplier AS TEXT) ILIKE ?" : "");
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+        boolean isNumeric = hasKeyword && keyword.trim().matches("\\d+");
+
+        StringBuilder query = new StringBuilder("SELECT COUNT(*) FROM supplier");
+        if (hasKeyword) {
+            if (isNumeric) {
+                query.append(" WHERE nama ILIKE ? OR id_supplier = ?");
+            } else {
+                query.append(" WHERE nama ILIKE ?");
+            }
+        }
+
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query.toString())) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
                 ps.setString(1, search);
-                ps.setString(2, search);
+                if (isNumeric) {
+                    ps.setInt(2, Integer.parseInt(keyword.trim()));
+                }
             }
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -59,19 +71,31 @@ public class SupplierDAO {
     public List<Supplier> getTablePageData(int limit, int offset, String keyword) {
         List<Supplier> list = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT s.id_supplier, s.nama, s.no_telp, "
-                + "STRING_AGG(DISTINCT b.nama, ', ') AS bahan_list "
-                + "FROM supplier s "
-                + "LEFT JOIN bahan_baku b ON s.id_supplier = b.id_supplier "
-                + (hasKeyword ? "WHERE s.nama ILIKE ? OR CAST(s.id_supplier AS TEXT) ILIKE ? " : "")
-                + "GROUP BY s.id_supplier "
-                + "ORDER BY s.nama ASC LIMIT ? OFFSET ?";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
+        boolean isNumeric = hasKeyword && keyword.trim().matches("\\d+");
+
+        StringBuilder query = new StringBuilder();
+        query.append("SELECT s.id_supplier, s.nama, s.no_telp FROM supplier s ");
+        query.append("JOIN (SELECT id_supplier FROM supplier ");
+        if (hasKeyword) {
+            if (isNumeric) {
+                query.append("WHERE nama ILIKE ? OR id_supplier = ? ");
+            } else {
+                query.append("WHERE nama ILIKE ? ");
+            }
+        }
+        query.append("ORDER BY nama ASC, id_supplier ASC LIMIT ? OFFSET ?) sub ");
+        query.append("ON s.id_supplier = sub.id_supplier ");
+        query.append("ORDER BY s.nama ASC, s.id_supplier ASC");
+
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query.toString())) {
             int idx = 1;
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
                 ps.setString(idx++, search);
-                ps.setString(idx++, search);
+                if (isNumeric) {
+                    ps.setInt(idx++, Integer.parseInt(keyword.trim()));
+                }
             }
             ps.setInt(idx++, limit);
             ps.setInt(idx, offset);
@@ -219,7 +243,6 @@ public class SupplierDAO {
                 + "FROM bahan_baku WHERE id_supplier = ? AND nama ILIKE ? "
                 + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
-            // Mem-parsing String ke Integer
             ps.setInt(1, Integer.parseInt(idSupplier));
             ps.setString(2, "%" + keyword + "%");
             ps.setInt(3, limit);
@@ -256,5 +279,34 @@ public class SupplierDAO {
             e.printStackTrace();
         }
         return null;
+    }
+
+    public Map<Integer, List<String>> getBahanMapBySupplierIds(List<Integer> supplierIds) {
+        Map<Integer, List<String>> map = new HashMap<>();
+        if (supplierIds == null || supplierIds.isEmpty()) {
+            return map;
+        }
+
+        StringBuilder sb = new StringBuilder("SELECT id_supplier, nama FROM bahan_baku WHERE id_supplier IN (");
+        for (int i = 0; i < supplierIds.size(); i++) {
+            sb.append(i == 0 ? "?" : ", ?");
+        }
+        sb.append(")");
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(sb.toString())) {
+            for (int i = 0; i < supplierIds.size(); i++) {
+                ps.setInt(i + 1, supplierIds.get(i));
+            }
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    int idSup = rs.getInt("id_supplier");
+                    String namaBahan = rs.getString("nama");
+                    map.computeIfAbsent(idSup, k -> new ArrayList<>()).add(namaBahan);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return map;
     }
 }

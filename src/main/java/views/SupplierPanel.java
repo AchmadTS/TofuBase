@@ -121,14 +121,16 @@ public class SupplierPanel extends JPanel {
         JPanel topCardsPanel = new JPanel(new GridLayout(1, 3, 20, 0));
         topCardsPanel.setBackground(Theme.BG);
         topCardsPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 130));
-        topCardsPanel.add(createStatCard("TOTAL SUPPLIER", lblTotalSupplier, "Pemasok terdaftar", Theme.TEXT_SECONDARY));
+        topCardsPanel
+                .add(createStatCard("TOTAL SUPPLIER", lblTotalSupplier, "Pemasok terdaftar", Theme.TEXT_SECONDARY));
         topCardsPanel.add(createStatCard("BAHAN DISUPLAI", lblBahanDisuplai, "▲ Jenis bahan aktif", Theme.GREEN));
-        topCardsPanel.add(createStatCard("TOTAL NILAI PASOKAN", lblTotalNilai, "Total aset nilai", Theme.TEXT_SECONDARY));
+        topCardsPanel
+                .add(createStatCard("TOTAL NILAI PASOKAN", lblTotalNilai, "Total aset nilai", Theme.TEXT_SECONDARY));
         return topCardsPanel;
     }
 
     private ActivityTable buildSupplierTable() {
-        String[] headers = {"ID", "Nama Supplier", "Kontak", "Bahan Disuplai", "Aksi"};
+        String[] headers = { "ID", "Nama Supplier", "Kontak", "Bahan Disuplai", "Aksi" };
         tableSupplier = new ActivityTable("Daftar Supplier", headers, 4, new ActivityTable.DataProvider() {
             @Override
             public int getTotalRowCount(String keyword) {
@@ -138,18 +140,28 @@ public class SupplierPanel extends JPanel {
             @Override
             public List<String[]> getPageData(int limit, int offset, String keyword) {
                 List<Supplier> suppliers = supplierDAO.getTablePageData(limit, offset, keyword);
+                List<Integer> supplierIds = new ArrayList<>();
+                for (Supplier s : suppliers) {
+                    supplierIds.add(s.getIdSupplier());
+                }
+
+                Map<Integer, List<String>> bahanMap = supplierDAO.getBahanMapBySupplierIds(supplierIds);
                 List<String[]> dataTabel = new ArrayList<>();
                 for (Supplier s : suppliers) {
-                    List<String> bahanList = s.getDaftarBahan();
+                    // Ambil dari map memori (tanpa nembak database lagi)
+                    List<String> bahanList = bahanMap.getOrDefault(s.getIdSupplier(), new ArrayList<>());
+
                     Set<String> uniqueBahan = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
                     uniqueBahan.addAll(bahanList);
-                    String displayBahan = uniqueBahan.isEmpty() ? "-" : (uniqueBahan.size() == 1 ? uniqueBahan.iterator().next() : uniqueBahan.size() + " Bahan");
-                    dataTabel.add(new String[]{
-                        String.valueOf(s.getIdSupplier()),
-                        s.getNama(),
-                        s.getNoTelp(),
-                        displayBahan,
-                        String.valueOf(s.getIdSupplier())
+                    String displayBahan = uniqueBahan.isEmpty() ? "-"
+                            : (uniqueBahan.size() == 1 ? uniqueBahan.iterator().next() : uniqueBahan.size() + " Bahan");
+
+                    dataTabel.add(new String[] {
+                            String.valueOf(s.getIdSupplier()),
+                            s.getNama(),
+                            s.getNoTelp(),
+                            displayBahan,
+                            String.valueOf(s.getIdSupplier())
                     });
                 }
                 return dataTabel;
@@ -177,18 +189,23 @@ public class SupplierPanel extends JPanel {
         modal.setVisible(true);
         if (modal.isSaved()) {
             refreshData();
-            JOptionPane.showMessageDialog(this, "Data supplier berhasil diperbarui!", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, "Data supplier berhasil diperbarui!", "Sukses",
+                    JOptionPane.INFORMATION_MESSAGE);
         }
     }
 
     private void handleDelete(String id, String name) {
         int idSupplier = Integer.parseInt(id);
         if (supplierDAO.isSupplierInUse(idSupplier)) {
-            JOptionPane.showMessageDialog(this, "Tidak dapat menghapus '" + name + "'.\nSupplier ini masih terdaftar sebagai pemasok bahan baku aktif.", "Gagal Hapus", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Tidak dapat menghapus '" + name
+                            + "'.\nSupplier ini masih terdaftar sebagai pemasok bahan baku aktif.",
+                    "Gagal Hapus", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        int confirm = JOptionPane.showConfirmDialog(this, "Yakin hapus supplier ini?", "Konfirmasi", JOptionPane.YES_NO_OPTION);
+        int confirm = JOptionPane.showConfirmDialog(this, "Yakin hapus supplier ini?", "Konfirmasi",
+                JOptionPane.YES_NO_OPTION);
         if (confirm == JOptionPane.YES_OPTION) {
             if (supplierDAO.deleteSupplier(idSupplier)) {
                 refreshData();
@@ -204,7 +221,8 @@ public class SupplierPanel extends JPanel {
 
     // --- ACTIONS ---
     private void handleExportPDF() {
-        JOptionPane.showMessageDialog(this, "Fitur Export PDF Supplier sedang dalam pengembangan.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, "Fitur Export PDF Supplier sedang dalam pengembangan.", "Info",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void handleAddData() {
@@ -213,10 +231,6 @@ public class SupplierPanel extends JPanel {
         if (modal.isSaved()) {
             refreshData();
         }
-    }
-
-    private void handleAction(String id, String name) {
-        System.out.println("Action untuk supplier ID: " + id);
     }
 
     private void refreshData() {

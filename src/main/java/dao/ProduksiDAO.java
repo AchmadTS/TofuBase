@@ -1,7 +1,6 @@
 package dao;
 
 import models.Produksi;
-import models.Produk;
 import utils.DatabaseConfig;
 import utils.FormatUtil;
 
