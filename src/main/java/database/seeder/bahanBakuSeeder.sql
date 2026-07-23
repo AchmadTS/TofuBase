@@ -10,27 +10,30 @@ VALUES
 INSERT INTO bahan_baku
     (id_bahan, id_supplier, nama, satuan, stok, harga_beli, min_stok)
 SELECT
-    n,
+    n AS id_bahan,
 
-    CASE (n % 3)
+    CASE (n % 5)
         WHEN 0 THEN 1
         WHEN 1 THEN 2
+        WHEN 2 THEN 3
+        WHEN 3 THEN 2
         ELSE 3
     END AS id_supplier,
 
     CASE (n % 5)
-        WHEN 0 THEN 'Kedelai ' || LPAD(n::text, 6, '0')
-        WHEN 1 THEN 'Garam ' || LPAD(n::text, 6, '0')
-        WHEN 2 THEN 'Kayu bakar ' || LPAD(n::text, 6, '0')
-        WHEN 3 THEN 'Kunyit ' || LPAD(n::text, 6, '0')
-        ELSE 'Plastik ' || LPAD(n::text, 6, '0')
+        WHEN 0 THEN 'Kedelai'
+        WHEN 1 THEN 'Garam'
+        WHEN 2 THEN 'Kayu bakar'
+        WHEN 3 THEN 'Kunyit'
+        ELSE 'Plastik'
     END AS nama,
 
-    CASE (n % 4)
+    CASE (n % 5)
         WHEN 0 THEN 'kg'
-        WHEN 1 THEN 'ikat'
-        WHEN 2 THEN 'pcs'
-        ELSE 'liter'
+        WHEN 1 THEN 'kg'
+        WHEN 2 THEN 'ikat'
+        WHEN 3 THEN 'kg'
+        ELSE 'pcs'
     END AS satuan,
 
     CASE (n % 5)
@@ -56,5 +59,4 @@ SELECT
         WHEN 3 THEN 2
         ELSE 500
     END AS min_stok
-
 FROM generate_series(6, 100000) AS n;

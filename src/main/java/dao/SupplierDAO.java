@@ -20,7 +20,9 @@ public class SupplierDAO {
                 + "(SELECT COUNT(*) FROM supplier) as total_sup, "
                 + "(SELECT COUNT(DISTINCT nama) FROM bahan_baku) as total_bahan, "
                 + "(SELECT SUM(stok * harga_beli) FROM bahan_baku) as total_val";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_supplier", FormatUtil.formatAngka(rs.getDouble("total_sup")));
                 data.put("bahan_disuplai", FormatUtil.formatAngka(rs.getDouble("total_bahan")));
@@ -35,7 +37,8 @@ public class SupplierDAO {
 
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT COUNT(*) FROM supplier" + (hasKeyword ? " WHERE nama LIKE ? OR CAST(id_supplier AS CHAR) LIKE ?" : "");
+        String query = "SELECT COUNT(*) FROM supplier"
+                + (hasKeyword ? " WHERE nama ILIKE ? OR CAST(id_supplier AS TEXT) ILIKE ?" : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -57,10 +60,10 @@ public class SupplierDAO {
         List<Supplier> list = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT s.id_supplier, s.nama, s.no_telp, "
-                + "GROUP_CONCAT(DISTINCT b.nama SEPARATOR ', ') AS bahan_list "
+                + "STRING_AGG(DISTINCT b.nama, ', ') AS bahan_list "
                 + "FROM supplier s "
                 + "LEFT JOIN bahan_baku b ON s.id_supplier = b.id_supplier "
-                + (hasKeyword ? "WHERE s.nama LIKE ? OR CAST(s.id_supplier AS CHAR) LIKE ? " : "")
+                + (hasKeyword ? "WHERE s.nama ILIKE ? OR CAST(s.id_supplier AS TEXT) ILIKE ? " : "")
                 + "GROUP BY s.id_supplier "
                 + "ORDER BY s.nama ASC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
@@ -75,7 +78,8 @@ public class SupplierDAO {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Supplier s = new Supplier(rs.getInt("id_supplier"), rs.getString("nama"), "", rs.getString("no_telp"), "");
+                    Supplier s = new Supplier(rs.getInt("id_supplier"), rs.getString("nama"), "",
+                            rs.getString("no_telp"), "");
                     list.add(s);
                 }
             }
@@ -91,7 +95,8 @@ public class SupplierDAO {
             ps.setString(1, nama);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new Supplier(rs.getInt("id_supplier"), rs.getString("nama"), rs.getString("alamat"), rs.getString("no_telp"), rs.getString("email"));
+                    return new Supplier(rs.getInt("id_supplier"), rs.getString("nama"), rs.getString("alamat"),
+                            rs.getString("no_telp"), rs.getString("email"));
                 }
             }
         } catch (Exception e) {
@@ -171,9 +176,10 @@ public class SupplierDAO {
 
     public Map<String, String> getRiwayatTopCardsData(String idSupplier) {
         Map<String, String> result = new HashMap<>();
-        String query = "SELECT COUNT(*) as total_transaksi, COUNT(DISTINCT nama) as bahan_disuplai, SUM(stok * harga_beli) as total_nilai " + "FROM bahan_baku WHERE id_supplier = ?";
+        String query = "SELECT COUNT(*) as total_transaksi, COUNT(DISTINCT nama) as bahan_disuplai, SUM(stok * harga_beli) as total_nilai "
+                + "FROM bahan_baku WHERE id_supplier = ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
-            ps.setString(1, idSupplier);
+            ps.setInt(1, Integer.parseInt(idSupplier));
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     java.text.NumberFormat nf = java.text.NumberFormat.getInstance(java.util.Locale.of("id", "ID"));
@@ -192,9 +198,9 @@ public class SupplierDAO {
 
     public int getRiwayatTotalRows(String idSupplier, String keyword) {
         int total = 0;
-        String query = "SELECT COUNT(*) FROM bahan_baku WHERE id_supplier = ? AND LOWER(nama) LIKE LOWER(?)";
+        String query = "SELECT COUNT(*) FROM bahan_baku WHERE id_supplier = ? AND nama ILIKE ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
-            ps.setString(1, idSupplier);
+            ps.setInt(1, Integer.parseInt(idSupplier));
             ps.setString(2, "%" + keyword + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
@@ -209,9 +215,12 @@ public class SupplierDAO {
 
     public List<String[]> getRiwayatPageData(int limit, int offset, String idSupplier, String keyword) {
         List<String[]> list = new ArrayList<>();
-        String query = "SELECT created_at, nama, stok, satuan, (stok * harga_beli) as total_nilai " + "FROM bahan_baku WHERE id_supplier = ? AND LOWER(nama) LIKE LOWER(?) " + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
+        String query = "SELECT created_at, nama, stok, satuan, (stok * harga_beli) as total_nilai "
+                + "FROM bahan_baku WHERE id_supplier = ? AND nama ILIKE ? "
+                + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
-            ps.setString(1, idSupplier);
+            // Mem-parsing String ke Integer
+            ps.setInt(1, Integer.parseInt(idSupplier));
             ps.setString(2, "%" + keyword + "%");
             ps.setInt(3, limit);
             ps.setInt(4, offset);
@@ -239,7 +248,8 @@ public class SupplierDAO {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new Supplier(rs.getInt("id_supplier"), rs.getString("nama"), rs.getString("alamat"), rs.getString("no_telp"), rs.getString("email"));
+                    return new Supplier(rs.getInt("id_supplier"), rs.getString("nama"), rs.getString("alamat"),
+                            rs.getString("no_telp"), rs.getString("email"));
                 }
             }
         } catch (Exception e) {

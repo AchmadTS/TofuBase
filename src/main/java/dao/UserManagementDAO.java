@@ -19,13 +19,15 @@ public class UserManagementDAO {
         data.put("admin_users", "0");
         data.put("staff_users", "0");
 
-        String query = "SELECT COUNT(*) total_users, "
-                + "SUM(CASE WHEN a.id_admin IS NOT NULL THEN 1 ELSE 0 END) admin_users, "
-                + "SUM(CASE WHEN s.id_staff IS NOT NULL THEN 1 ELSE 0 END) staff_users "
+        String query = "SELECT COUNT(*) AS total_users, "
+                + "SUM(CASE WHEN a.id_admin IS NOT NULL THEN 1 ELSE 0 END) AS admin_users, "
+                + "SUM(CASE WHEN s.id_staff IS NOT NULL THEN 1 ELSE 0 END) AS staff_users "
                 + "FROM users u "
                 + "LEFT JOIN admin a ON u.id_user = a.id_user "
                 + "LEFT JOIN staff s ON u.id_user = s.id_user";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_users", FormatUtil.formatAngka(rs.getDouble("total_users")));
                 data.put("admin_users", FormatUtil.formatAngka(rs.getDouble("admin_users")));
@@ -43,7 +45,7 @@ public class UserManagementDAO {
                 + " LEFT JOIN admin a ON u.id_user = a.id_user"
                 + " LEFT JOIN owner o ON u.id_user = o.id_user"
                 + " LEFT JOIN staff s ON u.id_user = s.id_user"
-                + (hasKeyword ? " WHERE u.nama LIKE ? OR u.username LIKE ? OR u.email LIKE ?" : "");
+                + (hasKeyword ? " WHERE u.nama ILIKE ? OR u.username ILIKE ? OR u.email ILIKE ?" : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -73,7 +75,7 @@ public class UserManagementDAO {
                 + "LEFT JOIN admin a ON u.id_user = a.id_user "
                 + "LEFT JOIN owner o ON u.id_user = o.id_user "
                 + "LEFT JOIN staff s ON u.id_user = s.id_user"
-                + (hasKeyword ? " WHERE u.nama LIKE ? OR u.username LIKE ? OR u.email LIKE ?" : "")
+                + (hasKeyword ? " WHERE u.nama ILIKE ? OR u.username ILIKE ? OR u.email ILIKE ?" : "")
                 + " ORDER BY u.id_user DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             int idx = 1;
@@ -87,7 +89,7 @@ public class UserManagementDAO {
             ps.setInt(idx, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    data.add(new String[]{
+                    data.add(new String[] {
                             String.valueOf(rs.getInt("id_user")),
                             rs.getString("username"),
                             rs.getString("nama"),

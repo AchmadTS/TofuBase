@@ -42,8 +42,10 @@ public class ProdukDAO {
         data.put("jenis_produk", "0");
         data.put("nilai_stok", "Rp 0");
 
-        String query = "SELECT COUNT(*) total_produk, SUM(stok) stok_total, SUM(stok * harga_jual) nilai_stok FROM produk";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        String query = "SELECT COUNT(*) AS total_produk, SUM(stok) AS stok_total, SUM(stok * harga_jual) AS nilai_stok FROM produk";
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_produk", FormatUtil.formatAngka(rs.getDouble("total_produk")));
                 data.put("stok_total", FormatUtil.formatAngka(rs.getDouble("stok_total")));
@@ -54,7 +56,8 @@ public class ProdukDAO {
                 String jenisQuery = isJenisColumnAvailable()
                         ? "SELECT COUNT(DISTINCT jenis) AS jenis_produk FROM produk"
                         : "SELECT COUNT(DISTINCT nama) AS jenis_produk FROM produk";
-                try (PreparedStatement psJenis = conn.prepareStatement(jenisQuery); ResultSet rsJenis = psJenis.executeQuery()) {
+                try (PreparedStatement psJenis = conn.prepareStatement(jenisQuery);
+                        ResultSet rsJenis = psJenis.executeQuery()) {
                     if (rsJenis.next()) {
                         data.put("jenis_produk", FormatUtil.formatAngka(rsJenis.getDouble("jenis_produk")));
                     }
@@ -69,7 +72,9 @@ public class ProdukDAO {
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         boolean hasJenis = hasKeyword && isJenisColumnAvailable();
-        String query = "SELECT COUNT(*) FROM produk" + (hasKeyword ? " WHERE nama LIKE ? OR CAST(id_produk AS CHAR) LIKE ?" + (hasJenis ? " OR jenis LIKE ?" : "") : "");
+        String query = "SELECT COUNT(*) FROM produk" + (hasKeyword
+                ? " WHERE nama ILIKE ? OR CAST(id_produk AS TEXT) ILIKE ?" + (hasJenis ? " OR jenis ILIKE ?" : "")
+                : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -97,9 +102,13 @@ public class ProdukDAO {
         String base = hasJenis
                 ? "SELECT id_produk, nama, jenis, satuan, harga_jual, stok FROM produk"
                 : "SELECT id_produk, nama, '' AS jenis, satuan, harga_jual, stok FROM produk";
-        String where = hasKeyword ? " WHERE nama LIKE ? OR CAST(id_produk AS CHAR) LIKE ?" + (hasJenis ? " OR jenis LIKE ?" : "") : "";
+        String where = hasKeyword
+                ? " WHERE nama ILIKE ? OR CAST(id_produk AS TEXT) ILIKE ?" + (hasJenis ? " OR jenis ILIKE ?" : "")
+                : "";
         String order = " ORDER BY nama ASC LIMIT ? OFFSET ?";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(base + where + order)) {
+
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(base + where + order)) {
             int idx = 1;
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -119,7 +128,7 @@ public class ProdukDAO {
                     String satuan = rs.getString("satuan");
                     String harga = "Rp " + FormatUtil.formatAngka(rs.getDouble("harga_jual"));
                     String stok = FormatUtil.formatAngka(rs.getDouble("stok"));
-                    data.add(new String[]{id, nama, jenis, satuan, harga, stok, id});
+                    data.add(new String[] { id, nama, jenis, satuan, harga, stok, id });
                 }
             }
         } catch (Exception e) {
@@ -137,7 +146,8 @@ public class ProdukDAO {
             ps.setInt(1, idProduk);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new Produk(rs.getInt("id_produk"), rs.getString("nama"), rs.getString("satuan"), rs.getDouble("harga_jual"), rs.getString("jenis"), rs.getDouble("stok"));
+                    return new Produk(rs.getInt("id_produk"), rs.getString("nama"), rs.getString("satuan"),
+                            rs.getDouble("harga_jual"), rs.getString("jenis"), rs.getDouble("stok"));
                 }
             }
         } catch (Exception e) {
@@ -148,10 +158,10 @@ public class ProdukDAO {
 
     public boolean insertProduk(Produk produk) {
         boolean hasJenis = isJenisColumnAvailable();
-        String query = hasJenis 
+        String query = hasJenis
                 ? "INSERT INTO produk (nama, jenis, satuan, harga_jual, stok) VALUES (?, ?, ?, ?, ?)"
                 : "INSERT INTO produk (nama, satuan, harga_jual, stok) VALUES (?, ?, ?, ?)";
-                
+
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasJenis) {
                 ps.setString(1, produk.getNama());

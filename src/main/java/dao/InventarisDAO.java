@@ -20,10 +20,12 @@ public class InventarisDAO {
         data.put("terakhir_cek", "-");
         data.put("aktivitas_bulanan", "0");
 
-        String query = "SELECT COUNT(*) total_cek, IFNULL(MAX(tanggal_cek), '-') terakhir_cek, "
-                + "SUM(CASE WHEN MONTH(tanggal_cek) = MONTH(CURDATE()) AND YEAR(tanggal_cek) = YEAR(CURDATE()) THEN 1 ELSE 0 END) aktivitas_bulanan "
+        String query = "SELECT COUNT(*) AS total_cek, COALESCE(CAST(MAX(tanggal_cek) AS TEXT), '-') AS terakhir_cek, "
+                + "SUM(CASE WHEN EXTRACT(MONTH FROM tanggal_cek) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM tanggal_cek) = EXTRACT(YEAR FROM CURRENT_DATE) THEN 1 ELSE 0 END) AS aktivitas_bulanan "
                 + "FROM inventaris";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_cek", FormatUtil.formatAngka(rs.getDouble("total_cek")));
                 data.put("terakhir_cek", rs.getString("terakhir_cek"));
@@ -37,7 +39,8 @@ public class InventarisDAO {
 
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT COUNT(*) FROM inventaris" + (hasKeyword ? " WHERE keterangan LIKE ? OR CAST(id_inventaris AS CHAR) LIKE ?" : "");
+        String query = "SELECT COUNT(*) FROM inventaris"
+                + (hasKeyword ? " WHERE keterangan ILIKE ? OR CAST(id_inventaris AS TEXT) ILIKE ?" : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -59,7 +62,7 @@ public class InventarisDAO {
         List<String[]> data = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT id_inventaris, tanggal_cek, keterangan FROM inventaris"
-                + (hasKeyword ? " WHERE keterangan LIKE ? OR CAST(id_inventaris AS CHAR) LIKE ?" : "")
+                + (hasKeyword ? " WHERE keterangan ILIKE ? OR CAST(id_inventaris AS TEXT) ILIKE ?" : "")
                 + " ORDER BY tanggal_cek DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             int idx = 1;
@@ -71,9 +74,10 @@ public class InventarisDAO {
             ps.setInt(idx++, limit);
             ps.setInt(idx, offset);
             try (ResultSet rs = ps.executeQuery()) {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.forLanguageTag("id-ID"));
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy",
+                        java.util.Locale.forLanguageTag("id-ID"));
                 while (rs.next()) {
-                    data.add(new String[]{
+                    data.add(new String[] {
                             String.valueOf(rs.getInt("id_inventaris")),
                             sdf.format(rs.getDate("tanggal_cek")),
                             rs.getString("keterangan"),
@@ -93,7 +97,8 @@ public class InventarisDAO {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new Inventaris(rs.getInt("id_inventaris"), rs.getDate("tanggal_cek"), rs.getString("keterangan"));
+                    return new Inventaris(rs.getInt("id_inventaris"), rs.getDate("tanggal_cek"),
+                            rs.getString("keterangan"));
                 }
             }
         } catch (Exception e) {
@@ -103,9 +108,9 @@ public class InventarisDAO {
     }
 
     public boolean insertInventaris(String keterangan) {
-        String query = "INSERT INTO inventaris (tanggal_cek, keterangan) VALUES (CURDATE(), ?)";
-        try (Connection conn = DatabaseConfig.getKoneksi(); 
-            PreparedStatement ps = conn.prepareStatement(query)) {
+        String query = "INSERT INTO inventaris (tanggal_cek, keterangan) VALUES (CURRENT_DATE, ?)";
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, keterangan);
             int rows = ps.executeUpdate();
             return rows > 0;

@@ -21,8 +21,10 @@ public class ProduksiDAO {
         data.put("hasil_total", "0");
         data.put("operator_aktif", "0");
 
-        String query = "SELECT COUNT(*) total_produksi, IFNULL(SUM(hasil_tahu), 0) hasil_total, COUNT(DISTINCT id_user) operator_aktif FROM produksi";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        String query = "SELECT COUNT(*) AS total_produksi, COALESCE(SUM(hasil_tahu), 0) AS hasil_total, COUNT(DISTINCT id_user) AS operator_aktif FROM produksi";
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_produksi", FormatUtil.formatAngka(rs.getDouble("total_produksi")));
                 data.put("hasil_total", FormatUtil.formatAngka(rs.getDouble("hasil_total")));
@@ -37,7 +39,7 @@ public class ProduksiDAO {
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT COUNT(*) FROM produksi p JOIN produk pr ON p.id_produk = pr.id_produk"
-                + (hasKeyword ? " WHERE pr.nama LIKE ? OR p.batch LIKE ? OR p.status LIKE ?" : "");
+                + (hasKeyword ? " WHERE pr.nama ILIKE ? OR p.batch ILIKE ? OR p.status ILIKE ?" : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -59,9 +61,9 @@ public class ProduksiDAO {
     public List<String[]> getTablePageData(int limit, int offset, String keyword) {
         List<String[]> data = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT p.id_produksi, p.batch, p.tanggal, pr.nama produk, p.hasil_tahu, p.status FROM produksi p "
+        String query = "SELECT p.id_produksi, p.batch, p.tanggal, pr.nama AS produk, p.hasil_tahu, p.status FROM produksi p "
                 + "JOIN produk pr ON p.id_produk = pr.id_produk"
-                + (hasKeyword ? " WHERE pr.nama LIKE ? OR p.batch LIKE ? OR p.status LIKE ?" : "")
+                + (hasKeyword ? " WHERE pr.nama ILIKE ? OR p.batch ILIKE ? OR p.status ILIKE ?" : "")
                 + " ORDER BY p.tanggal DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             int idx = 1;
@@ -74,9 +76,10 @@ public class ProduksiDAO {
             ps.setInt(idx++, limit);
             ps.setInt(idx, offset);
             try (ResultSet rs = ps.executeQuery()) {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.forLanguageTag("id-ID"));
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy",
+                        java.util.Locale.forLanguageTag("id-ID"));
                 while (rs.next()) {
-                    data.add(new String[]{
+                    data.add(new String[] {
                             String.valueOf(rs.getInt("id_produksi")),
                             rs.getString("batch"),
                             sdf.format(rs.getDate("tanggal")),
@@ -94,14 +97,14 @@ public class ProduksiDAO {
     }
 
     public Produksi getProduksiById(int id) {
-        String query = "SELECT p.id_produksi, p.tanggal, p.keterangan, p.hasil_tahu, p.status, pr.nama produk, p.batch, p.id_user "
+        String query = "SELECT p.id_produksi, p.tanggal, p.keterangan, p.hasil_tahu, p.status, pr.nama AS produk, p.batch, p.id_user "
                 + "FROM produksi p JOIN produk pr ON p.id_produk = pr.id_produk WHERE p.id_produksi = ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Produksi produksi = new Produksi(rs.getInt("id_produksi"), rs.getDate("tanggal"), rs.getString("keterangan"), rs.getDouble("hasil_tahu"), rs.getString("produk"), rs.getString("status"));
-                    return produksi;
+                    return new Produksi(rs.getInt("id_produksi"), rs.getDate("tanggal"), rs.getString("keterangan"),
+                            rs.getDouble("hasil_tahu"), rs.getString("produk"), rs.getString("status"));
                 }
             }
         } catch (Exception e) {
@@ -113,10 +116,10 @@ public class ProduksiDAO {
     public List<models.Produk> getProdukList() {
         List<models.Produk> list = new ArrayList<>();
         String query = "SELECT id_produk, nama, satuan, harga_jual, stok FROM produk ORDER BY nama ASC";
-        try (Connection conn = utils.DatabaseConfig.getKoneksi(); 
-             PreparedStatement ps = conn.prepareStatement(query); 
-             ResultSet rs = ps.executeQuery()) {
-            
+        try (Connection conn = utils.DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
+
             while (rs.next()) {
                 models.Produk p = new models.Produk();
                 p.setIdProduk(rs.getInt("id_produk"));
@@ -132,7 +135,8 @@ public class ProduksiDAO {
         return list;
     }
 
-    public boolean insertProduksi(int idProduk, String batch, java.util.Date tanggal, double hasilTahu, String status, String keterangan, int idUser) {
+    public boolean insertProduksi(int idProduk, String batch, java.util.Date tanggal, double hasilTahu, String status,
+            String keterangan, int idUser) {
         String queryProduksi = "INSERT INTO produksi (id_produk, batch, tanggal, hasil_tahu, status, keterangan, id_user) VALUES (?, ?, ?, ?, ?, ?, ?)";
         String queryUpdateStok = "UPDATE produk SET stok = stok + ? WHERE id_produk = ?";
         Connection conn = null;
@@ -160,13 +164,22 @@ public class ProduksiDAO {
             return true;
         } catch (Exception e) {
             if (conn != null) {
-                try { conn.rollback(); } catch (Exception ex) { ex.printStackTrace(); }
+                try {
+                    conn.rollback();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
             }
             e.printStackTrace();
             return false;
         } finally {
             if (conn != null) {
-                try { conn.setAutoCommit(true); conn.close(); } catch (Exception e) { e.printStackTrace(); }
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

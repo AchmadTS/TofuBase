@@ -19,9 +19,11 @@ public class LaporanKeuanganDAO {
         data.put("saldo_terakhir", "Rp 0");
         data.put("periode_terbaru", "-");
 
-        String query = "SELECT COUNT(*) total_laporan, IFNULL(MAX(saldo), 0) saldo_terakhir, "
-                + "IFNULL(MAX(CONCAT(periode_awal, ' - ', periode_akhir)), '-') periode_terbaru FROM laporan_keuangan";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        String query = "SELECT COUNT(*) AS total_laporan, COALESCE(MAX(saldo), 0) AS saldo_terakhir, "
+                + "COALESCE(MAX(CONCAT(periode_awal, ' - ', periode_akhir)), '-') AS periode_terbaru FROM laporan_keuangan";
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_laporan", FormatUtil.formatAngka(rs.getDouble("total_laporan")));
                 data.put("saldo_terakhir", "Rp " + FormatUtil.formatAngka(rs.getDouble("saldo_terakhir")));
@@ -36,7 +38,9 @@ public class LaporanKeuanganDAO {
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT COUNT(*) FROM laporan_keuangan"
-                + (hasKeyword ? " WHERE periode_awal LIKE ? OR periode_akhir LIKE ? OR CAST(id_laporan AS CHAR) LIKE ?" : "");
+                + (hasKeyword
+                        ? " WHERE CAST(periode_awal AS TEXT) ILIKE ? OR CAST(periode_akhir AS TEXT) ILIKE ? OR CAST(id_laporan AS TEXT) ILIKE ?"
+                        : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -59,7 +63,9 @@ public class LaporanKeuanganDAO {
         List<String[]> data = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT id_laporan, periode_awal, periode_akhir, total_pemasukan, total_pengeluaran, saldo FROM laporan_keuangan"
-                + (hasKeyword ? " WHERE periode_awal LIKE ? OR periode_akhir LIKE ? OR CAST(id_laporan AS CHAR) LIKE ?" : "")
+                + (hasKeyword
+                        ? " WHERE CAST(periode_awal AS TEXT) ILIKE ? OR CAST(periode_akhir AS TEXT) ILIKE ? OR CAST(id_laporan AS TEXT) ILIKE ?"
+                        : "")
                 + " ORDER BY id_laporan DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             int idx = 1;
@@ -73,7 +79,7 @@ public class LaporanKeuanganDAO {
             ps.setInt(idx, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    data.add(new String[]{
+                    data.add(new String[] {
                             String.valueOf(rs.getInt("id_laporan")),
                             rs.getString("periode_awal"),
                             rs.getString("periode_akhir"),

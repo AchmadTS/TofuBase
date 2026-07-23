@@ -20,10 +20,12 @@ public class PengeluaranDAO {
         data.put("kategori_utama", "-");
         data.put("jumlah_transaksi", "0");
 
-        String query = "SELECT IFNULL(SUM(jumlah), 0) total, COUNT(*) jumlah, "
-                + "IFNULL((SELECT kategori FROM pengeluaran GROUP BY kategori ORDER BY SUM(jumlah) DESC LIMIT 1), '-') kategori_utama "
+        String query = "SELECT COALESCE(SUM(jumlah), 0) AS total, COUNT(*) AS jumlah, "
+                + "COALESCE((SELECT kategori FROM pengeluaran GROUP BY kategori ORDER BY SUM(jumlah) DESC LIMIT 1), '-') AS kategori_utama "
                 + "FROM pengeluaran";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_pengeluaran", "Rp " + FormatUtil.formatAngka(rs.getDouble("total")));
                 data.put("jumlah_transaksi", FormatUtil.formatAngka(rs.getDouble("jumlah")));
@@ -37,7 +39,9 @@ public class PengeluaranDAO {
 
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT COUNT(*) FROM pengeluaran" + (hasKeyword ? " WHERE kategori LIKE ? OR deskripsi LIKE ? OR CAST(id_pengeluaran AS CHAR) LIKE ?" : "");
+        String query = "SELECT COUNT(*) FROM pengeluaran"
+                + (hasKeyword ? " WHERE kategori ILIKE ? OR deskripsi ILIKE ? OR CAST(id_pengeluaran AS TEXT) ILIKE ?"
+                        : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -60,7 +64,8 @@ public class PengeluaranDAO {
         List<String[]> data = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT id_pengeluaran, tanggal, kategori, deskripsi, jumlah FROM pengeluaran"
-                + (hasKeyword ? " WHERE kategori LIKE ? OR deskripsi LIKE ? OR CAST(id_pengeluaran AS CHAR) LIKE ?" : "")
+                + (hasKeyword ? " WHERE kategori ILIKE ? OR deskripsi ILIKE ? OR CAST(id_pengeluaran AS TEXT) ILIKE ?"
+                        : "")
                 + " ORDER BY tanggal DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             int idx = 1;
@@ -73,9 +78,10 @@ public class PengeluaranDAO {
             ps.setInt(idx++, limit);
             ps.setInt(idx, offset);
             try (ResultSet rs = ps.executeQuery()) {
-                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.forLanguageTag("id-ID"));
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd MMM yyyy",
+                        java.util.Locale.forLanguageTag("id-ID"));
                 while (rs.next()) {
-                    data.add(new String[]{
+                    data.add(new String[] {
                             String.valueOf(rs.getInt("id_pengeluaran")),
                             sdf.format(rs.getDate("tanggal")),
                             rs.getString("kategori"),
@@ -97,7 +103,8 @@ public class PengeluaranDAO {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new Pengeluaran(rs.getInt("id_pengeluaran"), rs.getDate("tanggal"), rs.getString("kategori"), rs.getString("deskripsi"), rs.getDouble("jumlah"));
+                    return new Pengeluaran(rs.getInt("id_pengeluaran"), rs.getDate("tanggal"), rs.getString("kategori"),
+                            rs.getString("deskripsi"), rs.getDouble("jumlah"));
                 }
             }
         } catch (Exception e) {

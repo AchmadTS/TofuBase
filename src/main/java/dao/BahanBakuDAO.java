@@ -34,7 +34,7 @@ public class BahanBakuDAO {
             }
 
             // Stok Kedelai & Status
-            String queryKed = "SELECT SUM(stok) AS total_stok, MAX(min_stok) AS batas_stok FROM bahan_baku WHERE nama LIKE ?";
+            String queryKed = "SELECT SUM(stok) AS total_stok, MAX(min_stok) AS batas_stok FROM bahan_baku WHERE nama ILIKE ?";
             try (PreparedStatement ps = conn.prepareStatement(queryKed)) {
                 ps.setString(1, "%Kedelai%");
                 try (ResultSet rs = ps.executeQuery()) {
@@ -74,7 +74,7 @@ public class BahanBakuDAO {
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT COUNT(*) AS total FROM (SELECT 1 FROM bahan_baku "
-                + (hasKeyword ? "WHERE nama LIKE ? OR CAST(id_bahan AS CHAR) LIKE ? " : "")
+                + (hasKeyword ? "WHERE nama ILIKE ? OR CAST(id_bahan AS TEXT) ILIKE ? " : "")
                 + "GROUP BY nama, satuan) AS sub";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
@@ -97,7 +97,7 @@ public class BahanBakuDAO {
         List<String[]> data = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
 
-        String whereClause = hasKeyword ? "WHERE nama LIKE ? OR CAST(id_bahan AS CHAR) LIKE ? " : "";
+        String whereClause = hasKeyword ? "WHERE nama ILIKE ? OR CAST(id_bahan AS TEXT) ILIKE ? " : "";
         String query = "SELECT MIN(b.id_bahan) AS id_bahan, b.nama, b.satuan, "
                 + "SUM(b.stok) AS total_stok, "
                 + "SUM(b.stok * b.harga_beli) / NULLIF(SUM(b.stok), 0) AS rata_harga, "
@@ -215,7 +215,7 @@ public class BahanBakuDAO {
 
     public int getRiwayatTotalRows(String namaBahan, String keyword) {
         int total = 0;
-        String query = "SELECT COUNT(*) FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND LOWER(CAST(id_supplier AS CHAR)) LIKE LOWER(?)";
+        String query = "SELECT COUNT(*) FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND CAST(id_supplier AS TEXT) ILIKE ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
             ps.setString(2, "%" + keyword + "%");
@@ -233,7 +233,7 @@ public class BahanBakuDAO {
     public List<String[]> getRiwayatPageData(int limit, int offset, String namaBahan, String keyword) {
         List<String[]> list = new ArrayList<>();
         String query = "SELECT id_bahan, created_at, nama, id_supplier, stok, satuan, harga_beli "
-                + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND LOWER(CAST(id_supplier AS CHAR)) LIKE LOWER(?) "
+                + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND CAST(id_supplier AS TEXT) ILIKE ? "
                 + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);

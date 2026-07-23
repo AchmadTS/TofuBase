@@ -20,9 +20,11 @@ public class PelangganDAO {
         data.put("omset_tertinggi", "Rp 0");
         data.put("pembelian_rata", "Rp 0");
 
-        String query = "SELECT COUNT(*) total_pelanggan, IFNULL(MAX(total), 0) omset_tertinggi, IFNULL(AVG(total), 0) pembelian_rata "
+        String query = "SELECT COUNT(*) AS total_pelanggan, COALESCE(MAX(total), 0) AS omset_tertinggi, COALESCE(AVG(total), 0) AS pembelian_rata "
                 + "FROM penjualan";
-        try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query); ResultSet rs = ps.executeQuery()) {
+        try (Connection conn = DatabaseConfig.getKoneksi();
+                PreparedStatement ps = conn.prepareStatement(query);
+                ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
                 data.put("total_pelanggan", FormatUtil.formatAngka(rs.getDouble("total_pelanggan")));
                 data.put("omset_tertinggi", "Rp " + FormatUtil.formatAngka(rs.getDouble("omset_tertinggi")));
@@ -36,7 +38,8 @@ public class PelangganDAO {
 
     public int getTableTotalRows(String keyword) {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT COUNT(*) FROM pelanggan" + (hasKeyword ? " WHERE nama LIKE ? OR CAST(id_pelanggan AS CHAR) LIKE ? OR no_telp LIKE ?" : "");
+        String query = "SELECT COUNT(*) FROM pelanggan"
+                + (hasKeyword ? " WHERE nama ILIKE ? OR CAST(id_pelanggan AS TEXT) ILIKE ? OR no_telp ILIKE ?" : "");
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
                 String search = "%" + keyword.trim() + "%";
@@ -58,8 +61,8 @@ public class PelangganDAO {
     public List<String[]> getTablePageData(int limit, int offset, String keyword) {
         List<String[]> data = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
-        String query = "SELECT id_pelanggan, nama, alamat, no_telp, email FROM pelanggan" 
-                + (hasKeyword ? " WHERE nama LIKE ? OR CAST(id_pelanggan AS CHAR) LIKE ? OR no_telp LIKE ?" : "")
+        String query = "SELECT id_pelanggan, nama, alamat, no_telp, email FROM pelanggan"
+                + (hasKeyword ? " WHERE nama ILIKE ? OR CAST(id_pelanggan AS TEXT) ILIKE ? OR no_telp ILIKE ?" : "")
                 + " ORDER BY nama ASC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             int idx = 1;
@@ -95,7 +98,8 @@ public class PelangganDAO {
             ps.setInt(1, id);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    return new Pelanggan(rs.getInt("id_pelanggan"), rs.getString("nama"), rs.getString("alamat"), rs.getString("no_telp"), rs.getString("email"));
+                    return new Pelanggan(rs.getInt("id_pelanggan"), rs.getString("nama"), rs.getString("alamat"),
+                            rs.getString("no_telp"), rs.getString("email"));
                 }
             }
         } catch (Exception e) {
@@ -111,7 +115,7 @@ public class PelangganDAO {
             ps.setString(2, pelanggan.getAlamat());
             ps.setString(3, pelanggan.getNoTelp());
             ps.setString(4, pelanggan.getEmail());
-            
+
             int rowsInserted = ps.executeUpdate();
             return rowsInserted > 0;
         } catch (Exception e) {

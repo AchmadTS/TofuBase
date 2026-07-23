@@ -23,10 +23,11 @@ public class PenjualanDAO {
         data.put("omzet", "Rp 0");
 
         String querySummary = "SELECT COUNT(*) AS total_penjualan, SUM(total) AS total_omzet, COUNT(DISTINCT id_pelanggan) AS total_pelanggan "
-                + "FROM penjualan WHERE tanggal >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND tanggal <= LAST_DAY(CURDATE())";
+                + "FROM penjualan WHERE tanggal >= date_trunc('month', CURRENT_DATE)::date AND tanggal <= (date_trunc('month', CURRENT_DATE) + interval '1 month - 1 day')::date";
+        
         String queryProduk = "SELECT SUM(rp.jumlah) AS total_produk FROM penjualan p "
                 + "JOIN record_penjualan rp ON p.id_penjualan = rp.id_penjualan "
-                + "WHERE p.tanggal >= DATE_FORMAT(CURDATE(), '%Y-%m-01') AND p.tanggal <= LAST_DAY(CURDATE())";
+                + "WHERE p.tanggal >= date_trunc('month', CURRENT_DATE)::date AND p.tanggal <= (date_trunc('month', CURRENT_DATE) + interval '1 month - 1 day')::date";
 
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(querySummary); ResultSet rs = ps.executeQuery()) {
             if (rs.next()) {
@@ -53,7 +54,7 @@ public class PenjualanDAO {
     public int getTableTotalRows(String keyword) {
         String query = "SELECT COUNT(*) AS total FROM penjualan p "
                 + "JOIN pelanggan t ON p.id_pelanggan = t.id_pelanggan "
-                + "WHERE p.id_penjualan LIKE ? OR t.nama LIKE ? OR p.keterangan LIKE ?";
+                + "WHERE CAST(p.id_penjualan AS TEXT) ILIKE ? OR t.nama ILIKE ? OR p.keterangan ILIKE ?";
         if (keyword == null || keyword.trim().isEmpty()) {
             query = "SELECT COUNT(*) AS total FROM penjualan";
         }
@@ -79,11 +80,12 @@ public class PenjualanDAO {
         List<String[]> data = new ArrayList<>();
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String baseSql = "SELECT p.id_penjualan, p.tanggal, t.nama AS pelanggan, p.total, "
-                + "IFNULL(SUM(rp.jumlah), 0) AS produk_terjual, p.keterangan "
+                + "COALESCE(SUM(rp.jumlah), 0) AS produk_terjual, p.keterangan "
                 + "FROM penjualan p "
                 + "JOIN pelanggan t ON p.id_pelanggan = t.id_pelanggan "
                 + "LEFT JOIN record_penjualan rp ON rp.id_penjualan = p.id_penjualan ";
-        String where = hasKeyword ? "WHERE p.id_penjualan LIKE ? OR t.nama LIKE ? OR p.keterangan LIKE ? " : "";
+                
+        String where = hasKeyword ? "WHERE CAST(p.id_penjualan AS TEXT) ILIKE ? OR t.nama ILIKE ? OR p.keterangan ILIKE ? " : "";
         String groupOrder = "GROUP BY p.id_penjualan, p.tanggal, t.nama, p.total, p.keterangan ORDER BY p.tanggal DESC, p.id_penjualan DESC LIMIT ? OFFSET ?";
 
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(baseSql + where + groupOrder)) {
