@@ -32,6 +32,7 @@ public class ModalRiwayatBahanBaku extends JDialog {
     private static final String CARD_DESC_3 = "Total kuantitas tercatat";
     private final BahanBakuDAO bahanDAO = new BahanBakuDAO();
     private final String targetNamaBahan;
+    private final String targetSatuan;
     private Point initialClick;
     private JLabel lblTotalTransaksi;
     private JLabel lblNilaiPembelian;
@@ -41,6 +42,11 @@ public class ModalRiwayatBahanBaku extends JDialog {
     public ModalRiwayatBahanBaku(Frame parent, String idBahan, String namaBahan) {
         super(parent, TITLE_DIALOG, true);
         this.targetNamaBahan = namaBahan;
+
+        String cleanId = idBahan.replace("BHN-", "");
+        models.BahanBakuModel model = bahanDAO.getTransaksiById(cleanId);
+        this.targetSatuan = (model != null && model.getSatuan() != null) ? model.getSatuan() : "";
+
         setupDialogProperties(parent);
         buildMainLayout();
         setupEscapeKey();
@@ -74,7 +80,8 @@ public class ModalRiwayatBahanBaku extends JDialog {
     }
 
     private void setupEscapeKey() {
-        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"), "closeModal");
+        getRootPane().getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW).put(KeyStroke.getKeyStroke("ESCAPE"),
+                "closeModal");
         getRootPane().getActionMap().put("closeModal", new AbstractAction() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -154,16 +161,16 @@ public class ModalRiwayatBahanBaku extends JDialog {
     }
 
     private ActivityTable buildRiwayatTable() {
-        String[] headers = {"Tgl Masuk", "Nama Bahan", "Supplier", "Jumlah", "Satuan", "Total Nilai", "Aksi"};
+        String[] headers = { "Tgl Masuk", "Nama Bahan", "Supplier", "Jumlah", "Satuan", "Total Nilai", "Aksi" };
         tableRiwayat = new ActivityTable("Riwayat: " + targetNamaBahan, headers, -1, new ActivityTable.DataProvider() {
             @Override
             public int getTotalRowCount(String keyword) {
-                return bahanDAO.getRiwayatTotalRows(targetNamaBahan, keyword);
+                return bahanDAO.getRiwayatTotalRows(targetNamaBahan, targetSatuan, keyword);
             }
 
             @Override
             public List<String[]> getPageData(int limit, int offset, String keyword) {
-                return bahanDAO.getRiwayatPageData(limit, offset, targetNamaBahan, keyword);
+                return bahanDAO.getRiwayatPageData(limit, offset, targetNamaBahan, targetSatuan, keyword);
             }
         });
 
@@ -193,19 +200,24 @@ public class ModalRiwayatBahanBaku extends JDialog {
     }
 
     private void handleDelete(String id) {
-        int confirm = JOptionPane.showConfirmDialog(this, "Apakah Anda yakin ingin menghapus data transaksi ini secara permanen?", "Konfirmasi Hapus", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+        int confirm = JOptionPane.showConfirmDialog(this,
+                "Apakah Anda yakin ingin menghapus data transaksi ini secara permanen?", "Konfirmasi Hapus",
+                JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
         if (confirm == JOptionPane.YES_OPTION) {
             if (bahanDAO.deleteRiwayatById(id)) {
-                JOptionPane.showMessageDialog(this, "Data transaksi berhasil dihapus dari database.", "Sukses", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Data transaksi berhasil dihapus dari database.", "Sukses",
+                        JOptionPane.INFORMATION_MESSAGE);
                 refreshData();
             } else {
-                JOptionPane.showMessageDialog(this, "Gagal menghapus data transaksi.", "Error", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Gagal menghapus data transaksi.", "Error",
+                        JOptionPane.ERROR_MESSAGE);
             }
         }
     }
 
     private void handleExportPdf() {
-        JOptionPane.showMessageDialog(this, "Fitur Export PDF akan segera hadir!", "Info", JOptionPane.INFORMATION_MESSAGE);
+        JOptionPane.showMessageDialog(this, "Fitur Export PDF akan segera hadir!", "Info",
+                JOptionPane.INFORMATION_MESSAGE);
     }
 
     private void refreshData() {
@@ -217,7 +229,7 @@ public class ModalRiwayatBahanBaku extends JDialog {
         new SwingWorker<Map<String, String>, Void>() {
             @Override
             protected Map<String, String> doInBackground() {
-                return bahanDAO.getRiwayatTopCardsData(targetNamaBahan);
+                return bahanDAO.getRiwayatTopCardsData(targetNamaBahan, targetSatuan);
             }
 
             @Override
@@ -288,7 +300,8 @@ public class ModalRiwayatBahanBaku extends JDialog {
 
         JLabel lbl = new JLabel(text, SwingConstants.CENTER);
         lbl.setForeground(textColor);
-        lbl.setFont(new Font("SansSerif", text.equals(ICON_CLOSE) ? Font.BOLD : Font.PLAIN, text.equals(ICON_CLOSE) ? 14 : 12));
+        lbl.setFont(new Font("SansSerif", text.equals(ICON_CLOSE) ? Font.BOLD : Font.PLAIN,
+                text.equals(ICON_CLOSE) ? 14 : 12));
         btn.add(lbl, BorderLayout.CENTER);
 
         btn.addMouseListener(new MouseAdapter() {

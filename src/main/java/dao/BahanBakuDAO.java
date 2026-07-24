@@ -75,10 +75,10 @@ public class BahanBakuDAO {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
         String query = "SELECT COUNT(*) AS total FROM (SELECT 1 FROM bahan_baku "
                 + (hasKeyword ? "WHERE nama ILIKE ? OR CAST(id_bahan AS TEXT) ILIKE ? " : "")
-                + "GROUP BY nama, satuan) AS sub";
+                + "GROUP BY LOWER(TRIM(nama)), LOWER(TRIM(COALESCE(satuan, '')))) AS sub";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             if (hasKeyword) {
-                String searchParam = keyword.trim() + "%";
+                String searchParam = "%" + keyword.trim() + "%";
                 ps.setString(1, searchParam);
                 ps.setString(2, searchParam);
             }
@@ -98,19 +98,21 @@ public class BahanBakuDAO {
         boolean hasKeyword = keyword != null && !keyword.trim().isEmpty();
 
         String whereClause = hasKeyword ? "WHERE nama ILIKE ? OR CAST(id_bahan AS TEXT) ILIKE ? " : "";
-        String query = "SELECT MIN(b.id_bahan) AS id_bahan, b.nama, b.satuan, "
+        String query = "SELECT MIN(b.id_bahan) AS id_bahan, "
+                + "MAX(b.nama) AS nama, MAX(b.satuan) AS satuan, "
                 + "SUM(b.stok) AS total_stok, "
                 + "SUM(b.stok * b.harga_beli) / NULLIF(SUM(b.stok), 0) AS rata_harga, "
                 + "MAX(b.min_stok) AS batas_stok "
-                + "FROM (SELECT nama, satuan FROM bahan_baku " + whereClause
-                + "GROUP BY nama, satuan ORDER BY nama ASC LIMIT ? OFFSET ?) AS filter_b "
-                + "JOIN bahan_baku b ON b.nama = filter_b.nama AND b.satuan = filter_b.satuan "
-                + "GROUP BY b.nama, b.satuan ORDER BY b.nama ASC";
+                + "FROM (SELECT LOWER(TRIM(nama)) AS lname, LOWER(TRIM(COALESCE(satuan, ''))) AS lsatuan FROM bahan_baku "
+                + whereClause
+                + "GROUP BY LOWER(TRIM(nama)), LOWER(TRIM(COALESCE(satuan, ''))) ORDER BY LOWER(TRIM(nama)) ASC LIMIT ? OFFSET ?) AS filter_b "
+                + "JOIN bahan_baku b ON LOWER(TRIM(b.nama)) = filter_b.lname AND LOWER(TRIM(COALESCE(b.satuan, ''))) = filter_b.lsatuan "
+                + "GROUP BY filter_b.lname, filter_b.lsatuan ORDER BY filter_b.lname ASC";
 
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             int paramIndex = 1;
             if (hasKeyword) {
-                String searchParam = keyword.trim() + "%";
+                String searchParam = "%" + keyword.trim() + "%";
                 ps.setString(paramIndex++, searchParam);
                 ps.setString(paramIndex++, searchParam);
             }
@@ -120,7 +122,7 @@ public class BahanBakuDAO {
                 while (rs.next()) {
                     String id = "BHN-" + rs.getInt("id_bahan");
                     String nama = rs.getString("nama");
-                    String satuan = rs.getString("satuan");
+                    String satuan = rs.getString("satuan") != null ? rs.getString("satuan") : "-";
 
                     double stok = rs.getDouble("total_stok");
                     double hargaBeliAvg = rs.getDouble("rata_harga");
@@ -196,7 +198,7 @@ public class BahanBakuDAO {
     }
 
     public BahanBakuModel cekDetailBahan(String namaBahan) {
-        String query = "SELECT satuan, min_stok FROM bahan_baku WHERE nama = ? LIMIT 1";
+        String query = "SELECT satuan, min_stok FROM bahan_baku WHERE LOWER(nama) = LOWER(?) LIMIT 1";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
             try (ResultSet rs = ps.executeQuery()) {
@@ -213,12 +215,15 @@ public class BahanBakuDAO {
         return null;
     }
 
-    public int getRiwayatTotalRows(String namaBahan, String keyword) {
+    public int getRiwayatTotalRows(String namaBahan, String satuan, String keyword) {
         int total = 0;
-        String query = "SELECT COUNT(*) FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND CAST(id_supplier AS TEXT) ILIKE ?";
+        String query = "SELECT COUNT(*) FROM bahan_baku WHERE LOWER(TRIM(nama)) = LOWER(TRIM(?)) "
+                + "AND LOWER(TRIM(COALESCE(satuan, ''))) = LOWER(TRIM(?)) "
+                + "AND CAST(id_supplier AS TEXT) ILIKE ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
-            ps.setString(2, "%" + keyword + "%");
+            ps.setString(2, satuan);
+            ps.setString(3, "%" + keyword + "%");
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     total = rs.getInt(1);
@@ -230,16 +235,19 @@ public class BahanBakuDAO {
         return total;
     }
 
-    public List<String[]> getRiwayatPageData(int limit, int offset, String namaBahan, String keyword) {
+    public List<String[]> getRiwayatPageData(int limit, int offset, String namaBahan, String satuan, String keyword) {
         List<String[]> list = new ArrayList<>();
         String query = "SELECT id_bahan, created_at, nama, id_supplier, stok, satuan, harga_beli "
-                + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?) AND CAST(id_supplier AS TEXT) ILIKE ? "
+                + "FROM bahan_baku WHERE LOWER(TRIM(nama)) = LOWER(TRIM(?)) "
+                + "AND LOWER(TRIM(COALESCE(satuan, ''))) = LOWER(TRIM(?)) "
+                + "AND CAST(id_supplier AS TEXT) ILIKE ? "
                 + "ORDER BY created_at DESC LIMIT ? OFFSET ?";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
-            ps.setString(2, "%" + keyword + "%");
-            ps.setInt(3, limit);
-            ps.setInt(4, offset);
+            ps.setString(2, satuan);
+            ps.setString(3, "%" + keyword + "%");
+            ps.setInt(4, limit);
+            ps.setInt(5, offset);
             try (ResultSet rs = ps.executeQuery()) {
                 java.text.NumberFormat nf = java.text.NumberFormat.getInstance(java.util.Locale.of("id", "ID"));
                 while (rs.next()) {
@@ -254,7 +262,6 @@ public class BahanBakuDAO {
                     row[5] = "Rp " + nf.format(totalNilai);
                     row[6] = "";
                     row[7] = String.valueOf(rs.getInt("id_bahan"));
-
                     list.add(row);
                 }
             }
@@ -264,12 +271,14 @@ public class BahanBakuDAO {
         return list;
     }
 
-    public Map<String, String> getRiwayatTopCardsData(String namaBahan) {
+    public Map<String, String> getRiwayatTopCardsData(String namaBahan, String satuan) {
         Map<String, String> result = new HashMap<>();
         String query = "SELECT COUNT(*) as total_transaksi, SUM(stok * harga_beli) as nilai_pembelian, SUM(stok) as stok_masuk "
-                + "FROM bahan_baku WHERE LOWER(nama) = LOWER(?)";
+                + "FROM bahan_baku WHERE LOWER(TRIM(nama)) = LOWER(TRIM(?)) "
+                + "AND LOWER(TRIM(COALESCE(satuan, ''))) = LOWER(TRIM(?))";
         try (Connection conn = DatabaseConfig.getKoneksi(); PreparedStatement ps = conn.prepareStatement(query)) {
             ps.setString(1, namaBahan);
+            ps.setString(2, satuan);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     java.text.NumberFormat nf = java.text.NumberFormat.getInstance(java.util.Locale.of("id", "ID"));
